@@ -27,7 +27,7 @@ import os
 import numpy as np
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--data_name', default=None, type=str)
+parser.add_argument('-data_name', default=None, type=str)
 parser.add_argument('-gpu', default='0', type=str)
 parser.add_argument('--vision_dset', action = 'store_true')
 parser.add_argument('--task', default='binary', type=str,choices = ['binary','multiclass','regression'])
@@ -56,8 +56,8 @@ parser.add_argument('-comment', default='', type=str)
 parser.add_argument('--optimizer', default='AdamW', type=str,choices = ['AdamW','Adam','SGD'])
 parser.add_argument('--scheduler', default='cosine', type=str,choices = ['cosine','linear'])
 
-parser.add_argument('--lr', default=0.0001, type=float)
-parser.add_argument('--epochs', default=300, type=int)
+parser.add_argument('-lr', default=0.0001, type=float)
+parser.add_argument('-epochs', default=300, type=int)
 parser.add_argument('--batchsize', default=256, type=int)
 parser.add_argument('--savemodelroot', default='./bestmodels', type=str)
 parser.add_argument('--run_name', default='testrun', type=str)
