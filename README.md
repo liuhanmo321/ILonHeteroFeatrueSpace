@@ -9,7 +9,7 @@ The environments:
 
 related parameters:
 
-    -method: method to use. 'shared_only', 'specific_only', 'ours', 'ours_ewc',
+    -method: method to use. 'shared_only', 'shared_only_ewc', 'specific_only', 'ours', 'ours_ewc',
     'muc', 'muc_ewc', 'pnn', 'acl', 'joint', 'ord_joint'
 
     -data_name: dataset to train on, choices are: 'bank', 'blastchar', 'income', 
@@ -22,6 +22,7 @@ related parameters:
     -lr
     -no_distill: unable distillation loss or ewc loss
     -no_discrim: unable discriminative loss
+    -class_inc: add this when training on volkert dataset
 
 To run the code, call the main.py file with the above parameters.
 
