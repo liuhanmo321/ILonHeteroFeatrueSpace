@@ -72,3 +72,19 @@ if opt.method == 'acl':
     os.system("python main.py -method=acl -gpu=1 -comment=fg -data_name=shoppers")
     os.system("python main.py -method=acl -gpu=1 -comment=fg -data_name=shrutime")
     os.system("python main.py -method=acl -gpu=1 -comment=fg -data_name=volkert -class_inc")
+
+if opt.method == 'joint':
+    os.system("python main.py -method=joint -gpu=1 -comment=fg -data_name=bank")
+    os.system("python main.py -method=joint -gpu=1 -comment=fg -data_name=blast_char")
+    os.system("python main.py -method=joint -gpu=1 -comment=fg -data_name=income")
+    os.system("python main.py -method=joint -gpu=1 -comment=fg -data_name=shoppers")
+    os.system("python main.py -method=joint -gpu=1 -comment=fg -data_name=shrutime")
+    os.system("python main.py -method=joint -gpu=1 -comment=fg -data_name=volkert -class_inc -lr=0.0005")
+
+if opt.method == 'ord_joint':
+    os.system("python main.py -method=ord_joint -gpu=1 -comment=fg -data_name=bank")
+    os.system("python main.py -method=ord_joint -gpu=1 -comment=fg -data_name=blast_char")
+    os.system("python main.py -method=ord_joint -gpu=1 -comment=fg -data_name=income")
+    os.system("python main.py -method=ord_joint -gpu=1 -comment=fg -data_name=shoppers")
+    os.system("python main.py -method=ord_joint -gpu=1 -comment=fg -data_name=shrutime")
+    os.system("python main.py -method=ord_joint -gpu=1 -comment=fg -data_name=volkert -class_inc")
