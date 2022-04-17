@@ -327,7 +327,10 @@ def baseline_joint(opt):
 
 def baseline_ord_joint(opt):
 
-    from saint.ours_model import SAINT
+    if opt.shrink:
+        from saint.ours_model import SAINT
+    else:
+        from saint.base_model import SAINT
     
     save_path = './results/' + '_'.join([opt.method, opt.data_name]) + '.csv'
     save_path = opt.result_path

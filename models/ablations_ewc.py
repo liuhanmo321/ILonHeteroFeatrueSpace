@@ -48,7 +48,10 @@ def fisher_matrix_diag(data_id, dataloader, model, old_model, fisher, device):
     return temp_fisher
 
 def baseline_shared_only_ewc(opt):   
-    from saint.ours_model import SAINT
+    if opt.shrink:
+        from saint.ours_model import SAINT
+    else:
+        from saint.base_model import SAINT
     # from saint.base_model import SAINT
 
     save_path = opt.result_path
@@ -135,7 +138,6 @@ def baseline_shared_only_ewc(opt):
             
             if epoch%1==0:
                 model.eval()
-                # valid_loss = valid_loss_ours(model, validloaders[data_id], device, data_id, opt, train_type='shared_only', old_shared_extractor=old_shared_extractor)
                 print('[EPOCH %d] Running Loss: %.3f Fisher Loss: %.3f' % (epoch + 1, running_loss, running_fisher_loss))
                 if running_loss < best_loss:
                     best_loss = running_loss             
@@ -169,7 +171,6 @@ def baseline_shared_only_ewc(opt):
 
         for temp_data_id in range(data_id + 1):
             temp_test_accuracy, temp_test_auroc = classification_scores_cont(model, testloaders[temp_data_id], device, opt.task, temp_data_id)
-            # print("task ", temp_data_id, "at step of", data_id, "with auc", temp_test_auroc)
             result_matrix[temp_data_id, data_id] = temp_test_auroc
 
     print(result_matrix)
@@ -177,8 +178,8 @@ def baseline_shared_only_ewc(opt):
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
 
     print('Table for HyperParameters')
-    table = PrettyTable(['time', 'avg_acc', 'beta', 'gamma', 'parameters'])
-    table.add_row([total_time, '%.4f' %np.mean(result_matrix[:, -1]), opt.beta, opt.gamma, total_parameters])
+    table = PrettyTable(['time', 'avg_acc', 'parameters'])
+    table.add_row([total_time, '%.4f' %np.mean(result_matrix[:, -1]), total_parameters])
     print(table)
     print('===========================================================================')
     with open(save_path, 'a+') as f:
@@ -189,6 +190,5 @@ def baseline_shared_only_ewc(opt):
         f.write('\n')
         f.write('====================================================================\n\n')
         f.close()
-
     if opt.hyper_search:
         return  np.mean(result_matrix[:, -1])

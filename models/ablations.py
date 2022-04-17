@@ -29,11 +29,10 @@ def MultiClassCrossEntropy(logits, labels, T):
     return Variable(outputs.data, requires_grad=True)
 
 def baseline_shared_only(opt):
-    # if opt.shrink:
-    #     from saint.ours_model import SAINT
-    # else:
-    #     from saint.base_model import SAINT
-    from saint.ours_model import SAINT
+    if opt.shrink:
+        from saint.ours_model import SAINT
+    else:
+        from saint.base_model import SAINT
     save_path = opt.result_path
 
     device = torch.device('cuda:' + opt.gpu if torch.cuda.is_available() else "cpu")
@@ -122,7 +121,6 @@ def baseline_shared_only(opt):
             
             if epoch%1==0:
                 model.eval()
-                # valid_loss = valid_loss_ours(model, validloaders[data_id], device, data_id, opt, train_type='shared_only', old_shared_extractor=old_shared_extractor)
                 print('[EPOCH %d] Running Loss: %.3f Dist Loss: %.3f' % (epoch + 1, running_loss, dist_loss))
                 if running_loss < best_loss:
                     best_loss = running_loss             
@@ -215,15 +213,7 @@ def baseline_specific_only(opt):
 
         ## Choosing the optimizer
 
-        if opt.optimizer == 'SGD':
-            optimizer = optim.SGD(model.parameters(), lr=opt.lr,
-                                momentum=0.9, weight_decay=5e-4)
-            from utils import get_scheduler
-            scheduler = get_scheduler(opt, optimizer)
-        elif opt.optimizer == 'Adam':
-            optimizer = optim.Adam(model.parameters(),lr=opt.lr)
-        elif opt.optimizer == 'AdamW':
-            optimizer = optim.AdamW(model.parameters(),lr=opt.lr)
+        optimizer = optim.AdamW(model.parameters(),lr=opt.lr)
 
         lr = opt.lr
         best_loss = np.inf
@@ -282,11 +272,7 @@ def baseline_specific_only(opt):
             total_time += end_time - start_time
 
             if epoch%1==0:
-                model.eval()
-                valid_loss = valid_loss_ours(model, validloaders[data_id], device, data_id, opt, train_type='specific_only', old_shared_extractor=None)
-                model.train()
-
-                print('[EPOCH %d] Running Loss: %.3f, Valid Loss: %.3f, total_dis_score %f' % (epoch + 1, running_loss, valid_loss, total_dis_score))
+                print('[EPOCH %d] Running Loss: %.3f, total_dis_score %f' % (epoch + 1, running_loss, total_dis_score))
                 if running_loss < best_loss:
                     best_loss = running_loss             
                     stop_count = 0

@@ -11,7 +11,7 @@ opt = parser.parse_args()
 
 if opt.method == 'lwf':
     # os.system("python main.py -method=shared_only -gpu=2 -comment=fg -distill_frac=1 -T=4 -data_name=bank")
-    os.system("python main.py -method=shared_only -gpu=0 -comment=fg -distill_frac=0.2 -T=2 -data_name=blast_char")
+    os.system("python main.py -method=shared_only -gpu=2 -comment=fg -distill_frac=0.2 -T=2 -data_name=blast_char")
     # os.system("python main.py -method=shared_only -gpu=2 -comment=fg -distill_frac=1 -T=2 -data_name=income")
     # os.system("python main.py -method=shared_only -gpu=2 -comment=fg -distill_frac=1 -T=4 -data_name=shoppers")
     # os.system("python main.py -method=shared_only -gpu=2 -comment=fg -distill_frac=0.2 -T=2 -data_name=shrutime")

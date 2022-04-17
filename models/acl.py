@@ -29,51 +29,19 @@ def MultiClassCrossEntropy(logits, labels, T):
 
 def baseline_acl(opt):
 
-    # if opt.shrink:
-    from saint.acl_model_shrink import SAINT
-    # else:
-    #     from saint.acl_model import SAINT
-    # save_path = './results/' + '_'.join([opt.method, opt.data_name]) + '.csv'
+    from saint.acl_model import SAINT
     save_path = opt.result_path
 
-
-    modelsave_path = os.path.join(os.getcwd(),opt.savemodelroot,opt.task,opt.data_name,opt.run_name)
-    if opt.task == 'regression':
-        opt.dtask = 'reg'
-    else:
-        opt.dtask = 'clf'
-
     alpha = opt.alpha
-    beta = opt.beta
-    gamma = opt.gamma
 
     device = torch.device('cuda:' + opt.gpu if torch.cuda.is_available() else "cpu")
     print(f"Device is {device}.")
-
-    # torch.manual_seed(opt.set_seed)
-    os.makedirs(modelsave_path, exist_ok=True)
-
-    if opt.active_log:
-        import wandb        
-        if opt.task=='multiclass':
-            wandb.init(project="saint_v2_all_kamal", group =opt.run_name ,name = f'{opt.task}_{str(opt.attentiontype)}_{str(opt.data_name)}_{str(opt.set_seed)}')
-        else:
-            wandb.init(project="saint_v2_all", group =opt.run_name ,name = f'{opt.method}_{opt.task}_{str(opt.attentiontype)}_{str(opt.data_name)}_{str(opt.set_seed)}')
     
     # Data Set Related
 
     cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = sub_data_prep(opt.data_name, opt.dset_seed,opt.dtask, datasplit=[.65, .15, .2], num_tasks=opt.num_tasks, class_inc=opt.class_inc)
 
     # Model Related
-
-    if y_dims[0] == 2 and opt.task == 'binary':
-        # opt.task = 'binary'
-        criterion = nn.CrossEntropyLoss().to(device)
-    elif y_dims[0] > 2 and  opt.task == 'multiclass':
-        # opt.task = 'multiclass'
-        criterion = nn.CrossEntropyLoss().to(device)
-    else:
-        raise'case not written yet'
 
     result_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
     total_time = 0
@@ -122,8 +90,6 @@ def baseline_acl(opt):
         ## Prepare past model
         lr = opt.lr
         best_loss = np.inf
-        best_valid_auroc = 0
-        best_valid_accuracy = 0
         stop_count = 0
         print('Training begins now.')
         for epoch in range(opt.epochs):
@@ -138,9 +104,6 @@ def baseline_acl(opt):
                 for _ in range(2):
 
                     optimizer.zero_grad()
-                    # x_categ is the the categorical data, x_cont has continuous data, y_gts has ground truth ys. cat_mask is an array of ones same shape as x_categ and an additional column(corresponding to CLS token) set to 0s. con_mask is an array of ones same shape as x_cont.
-
-                    # We are converting the data to embeddings in the next step
                     _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
                     
                     shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
@@ -198,41 +161,6 @@ def baseline_acl(opt):
                     if lr < opt.lr_lower_bound:
                         break
                     optimizer = optim.AdamW(model.parameters(),lr=lr)
-                # print('running_loss is:', running_loss)
-                # model.eval()
-                # with torch.no_grad():
-                #     sum_acc, sum_auroc = 0, 0
-                #     for temp_data_id in range(data_id + 1):
-                #         accuracy, auroc = classification_scores_acl(model, validloaders[temp_data_id], device, opt.task, temp_data_id, alpha)
-                #         sum_acc += accuracy
-                #         sum_auroc += auroc
-
-                #     accuracy = sum_acc / (data_id + 1)
-                #     auroc = sum_auroc / (data_id + 1)
-                #     print('[EPOCH %d] VALID ACCURACY: %.3f, VALID AUROC: %.3f' %
-                #         (epoch + 1, accuracy,auroc ))
-
-                #     if opt.active_log:
-                #         wandb.log({'valid_accuracy': accuracy ,'valid_auroc': auroc })       
-                #     if opt.task =='multiclass':
-                #         if accuracy > best_valid_accuracy:
-                #             best_valid_accuracy = accuracy
-                #             torch.save(model.state_dict(),'%s/bestmodel.pth' % (modelsave_path))
-                #     else:
-                #         # if accuracy > best_valid_accuracy:
-                #         #     best_valid_accuracy = accuracy
-                #         # if auroc > best_valid_auroc:
-                #         #     best_valid_auroc = auroc 
-                #         if running_loss < best_loss:
-                #             best_loss = running_loss            
-                #             # torch.save(model.state_dict(),'%s/bestmodel.pth' % (modelsave_path))
-                #             stop_count = 0
-                #         else:
-                #             stop_count += 1
-                # model.train()
-
-                # if stop_count == opt.earlystop:
-                #     break
 
         for temp_data_id in range(data_id + 1):
             temp_test_accuracy, temp_test_auroc = classification_scores_acl(model, testloaders[temp_data_id], device,  opt.task, temp_data_id, alpha)
@@ -241,10 +169,6 @@ def baseline_acl(opt):
     print(result_matrix)
     total_parameters = count_parameters(model)
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
-
-    if opt.active_log:
-        wandb.log({'total_parameters': total_parameters})
-        # wandb.log({'test_accuracy': test_accuracy ,'test_auroc': test_auroc })
     
     print('Table for HyperParameters')
     table = PrettyTable(['time', 'avg_acc', 'parameters'])
