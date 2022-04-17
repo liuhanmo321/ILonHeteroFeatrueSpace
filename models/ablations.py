@@ -10,7 +10,6 @@ import torch.nn.functional as F
 
 from tools import count_parameters, classification_scores_cont, classification_scores_specific_only, valid_loss_ours
 from augmentations import embed_data_cont
-from augmentations import add_noise
 import copy
 
 from prettytable import PrettyTable
@@ -19,7 +18,6 @@ import time
 import os
 import numpy as np
 
-patience = 5
 
 def MultiClassCrossEntropy(logits, labels, T):
     # Ld = -1/N * sum(N) sum(C) softmax(label) * log(softmax(logit))
@@ -58,16 +56,11 @@ def baseline_shared_only(opt):
             model = SAINT(
                 categories = tuple(cat_dims_group[0]), 
                 num_continuous = len(con_idxs_group[0]),                
-                dim = opt.embedding_size,                           
-                dim_out = 1,                       
+                dim = opt.embedding_size,                 
                 depth = opt.transformer_depth,                       
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
-                mlp_hidden_mults = (4, 2),       
-                cont_embeddings = opt.cont_embeddings,
-                attentiontype = opt.attentiontype,
-                final_mlp_style = opt.final_mlp_style,
                 y_dim = y_dims[0],
                 condition = 'shared_only'
             )
@@ -174,10 +167,10 @@ def baseline_shared_only(opt):
 
 
 def baseline_specific_only(opt):
-    if opt.shrink:
-        from saint.ours_model import SAINT
-    else:
-        from saint.base_model import SAINT
+    # if opt.shrink:
+    from saint.ours_model import SAINT
+    # else:
+    #     from saint.base_model import SAINT
 
     save_path = opt.result_path
 
@@ -206,16 +199,11 @@ def baseline_specific_only(opt):
             model = SAINT(
                 categories = tuple(cat_dims_group[0]), 
                 num_continuous = len(con_idxs_group[0]),                
-                dim = opt.embedding_size,                           
-                dim_out = 1,                       
+                dim = opt.embedding_size,             
                 depth = opt.transformer_depth,                       
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
-                mlp_hidden_mults = (4, 2),       
-                cont_embeddings = opt.cont_embeddings,
-                attentiontype = opt.attentiontype,
-                final_mlp_style = opt.final_mlp_style,
                 y_dim = y_dims[0],
                 condition = 'specific_only'
             )

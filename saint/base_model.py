@@ -32,15 +32,8 @@ class SAINT(nn.Module):
         depth,
         heads,
         dim_head = 16,
-        dim_out = 1,
-        mlp_hidden_mults = (4, 2),
-        mlp_act = None,
         attn_dropout = 0.,
         ff_dropout = 0.,
-        cont_embeddings = 'MLP',
-        scalingfactor = 10,
-        attentiontype = 'col',
-        final_mlp_style = 'common',
         y_dim = 2,
         condition = None
         ):
@@ -75,20 +68,10 @@ class SAINT(nn.Module):
         self.ff_dropout = ff_dropout
 
         # structure parameters
-        self.cont_embeddings = cont_embeddings
-        self.attentiontype = attentiontype
-        self.final_mlp_style = final_mlp_style
         self.condition = condition
 
         self.hidden_dims = 128
         self.embed_dim = 32
-
-        # self.embeds = nn.Embedding(total_tokens, self.dim)
-
-        # if self.cont_embeddings == 'MLP':
-        #     self.simple_MLP = nn.ModuleList([simple_MLP([1,self.embed_dim,self.dim]) for _ in range(num_continuous)])
-        # else:
-        #     print('Continous features are not passed through attention') 
 
         # start modifying embeddings
 
@@ -125,10 +108,6 @@ class SAINT(nn.Module):
                     )]
                 )
             self.specific_classifier = nn.ModuleList([simple_MLP([dim, int(self.hidden_dims / 2), y_dim])])       
-        
-        # self.embeddings = nn.ModuleList(
-        #     [nn.Embedding(total_tokens, self.dim)]
-        # )
 
         # end modification        
         

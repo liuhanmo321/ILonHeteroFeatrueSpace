@@ -162,56 +162,32 @@ def sub_data_prep(data_name, seed, task, datasplit=[.65, .15, .2], num_tasks=3, 
 
     cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = [], [], [], [], [], []
 
-    if not class_inc:
-        if data_name == 'mix':
-            name_list = ['bank', 'income', 'shrutime', 'blast_char', 'shoppers']
-            for name in name_list:
-                cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std = data_prep(name, datasplit, subset=False)
-                continuous_mean_std = np.array([train_mean,train_std]).astype(np.float32)
+    if not class_inc:   
+        for i in range(num_tasks):
+            if length == None:
+                cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std = data_prep(data_name, datasplit, subset=True)
+            else:
+                cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std = data_prep(data_name, datasplit, subset=True, length=length[i])
+            continuous_mean_std = np.array([train_mean,train_std]).astype(np.float32)
 
-                print(cat_idxs)
-                print(con_idxs)
+            print(cat_idxs)
+            print(con_idxs)
 
-                cat_dims = np.append(np.array([1]),np.array(cat_dims)).astype(int)
-                cat_dims_group.append(cat_dims)
-                con_idxs_group.append(con_idxs)
+            cat_dims = np.append(np.array([1]),np.array(cat_dims)).astype(int)
+            cat_dims_group.append(cat_dims)
+            con_idxs_group.append(con_idxs)
 
-                train_ds = DataSetCatCon(X_train, y_train, cat_idxs,continuous_mean_std)
-                trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=4))
+            train_ds = DataSetCatCon(X_train, y_train, cat_idxs, continuous_mean_std)
+            trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=4))
 
-                valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
-                validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=4))
+            valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
+            validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=4))
 
-                test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
-                testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
+            test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
+            testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
 
-                y_dims.append(len(np.unique(y_train['data'][:,0])))            
-        else:        
-            for i in range(num_tasks):
-                if length == None:
-                    cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std = data_prep(data_name, datasplit, subset=True)
-                else:
-                    cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std = data_prep(data_name, datasplit, subset=True, length=length[i])
-                continuous_mean_std = np.array([train_mean,train_std]).astype(np.float32)
+            y_dims.append(len(np.unique(y_train['data'][:,0])))
 
-                print(cat_idxs)
-                print(con_idxs)
-
-                cat_dims = np.append(np.array([1]),np.array(cat_dims)).astype(int)
-                cat_dims_group.append(cat_dims)
-                con_idxs_group.append(con_idxs)
-
-                train_ds = DataSetCatCon(X_train, y_train, cat_idxs,continuous_mean_std)
-                trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=4))
-
-                valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
-                validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=4))
-
-                test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
-                testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
-
-                y_dims.append(len(np.unique(y_train['data'][:,0])))
-    
     else:
         if data_name == 'volkert':
             selected_cls = np.arange(10)
@@ -225,33 +201,6 @@ def sub_data_prep(data_name, seed, task, datasplit=[.65, .15, .2], num_tasks=3, 
 
                 print(cat_idxs)
                 print(con_idxs)
-
-                cat_dims = np.append(np.array([1]),np.array(cat_dims)).astype(int)
-                cat_dims_group.append(cat_dims)
-                con_idxs_group.append(con_idxs)
-
-                train_ds = DataSetCatCon(X_train, y_train, cat_idxs,continuous_mean_std)
-                trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=4))
-
-                valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
-                validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=4))
-
-                test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
-                testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
-
-                y_dims.append(len(np.unique(y_train['data'][:,0])))
-        elif data_name == 'helena': 
-            selected_cls = np.arange(100)
-            np.random.shuffle(selected_cls)
-            # print(selected_cls)
-            for i in range(20):
-                named_cls = list(selected_cls[5 * i: 5 * (i+1)])
-                # print(named_cls)
-                cat_dims, cat_idxs, con_idxs, X_train, y_train, X_valid, y_valid, X_test, y_test, train_mean, train_std = data_prep(data_name, datasplit, subset=True, named_cls=named_cls)
-                continuous_mean_std = np.array([train_mean,train_std]).astype(np.float32)
-
-                # print(cat_idxs)
-                # print(con_idxs)
 
                 cat_dims = np.append(np.array([1]),np.array(cat_dims)).astype(int)
                 cat_dims_group.append(cat_dims)

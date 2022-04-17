@@ -11,7 +11,6 @@ import torch.nn.functional as F
 
 from tools import count_parameters, classification_scores_ours, valid_loss_ours, classification_scores_cont, classification_scores_specific_only
 from augmentations import embed_data_cont
-from augmentations import add_noise
 import copy
 
 from prettytable import PrettyTable
@@ -77,15 +76,10 @@ def ours(opt):
                 categories = tuple(cat_dims_group[0]), 
                 num_continuous = len(con_idxs_group[0]),                
                 dim = opt.embedding_size,                           
-                dim_out = 1,                       
                 depth = opt.transformer_depth,                       
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
-                mlp_hidden_mults = (4, 2),       
-                cont_embeddings = opt.cont_embeddings,
-                attentiontype = opt.attentiontype,
-                final_mlp_style = opt.final_mlp_style,
                 y_dim = y_dims[0]
             )
         else:

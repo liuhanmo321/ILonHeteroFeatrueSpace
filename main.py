@@ -14,10 +14,8 @@ from models.ours import ours
 from models.baselines import baseline_ord_joint, baseline_joint, baseline_finetune
 from models.acl import baseline_acl
 # from models.test import ours_test/
-from models.ours_cat import ours_cat
 from models.ours_ewc import ours_ewc
 from models.muc import muc
-from models.hat import hat
 from models.pnn import pnn
 from models.muc_ewc import muc_ewc
 
@@ -37,7 +35,6 @@ parser.add_argument('--transformer_depth', default=4, type=int)
 parser.add_argument('--attention_heads', default=2, type=int) # Here I change from 2 to 4, remember to swtich back
 parser.add_argument('--attention_dropout', default=0.1, type=float)
 parser.add_argument('--ff_dropout', default=0.1, type=float)
-parser.add_argument('--attentiontype', default='col', type=str,choices = ['col','colrow','row','justmlp','attn','attnmlp'])
 
 parser.add_argument('-method', default='shared_only', type=str)
 parser.add_argument('-num_tasks', default=3, type=int)
@@ -54,16 +51,14 @@ parser.add_argument('-patience', default=5, type=int)
 parser.add_argument('-comment', default='', type=str)
 
 parser.add_argument('--optimizer', default='AdamW', type=str,choices = ['AdamW','Adam','SGD'])
-parser.add_argument('--scheduler', default='cosine', type=str,choices = ['cosine','linear'])
 
 parser.add_argument('-lr', default=0.0001, type=float)
 parser.add_argument('-epochs', default=300, type=int)
-parser.add_argument('--batchsize', default=256, type=int)
+parser.add_argument('-batchsize', default=256, type=int)
 parser.add_argument('--savemodelroot', default='./bestmodels', type=str)
 parser.add_argument('--run_name', default='testrun', type=str)
 parser.add_argument('--set_seed', default= 1 , type=int)
 parser.add_argument('--dset_seed', default= 5 , type=int)
-parser.add_argument('--active_log', default=False, action = 'store_true')
 
 parser.add_argument('-alpha', default=0.2, type=float)
 parser.add_argument('-beta', default=0.1, type=float)
@@ -224,8 +219,6 @@ if __name__ == '__main__':
                         baseline_finetune(opt)
                     if opt.method == 'acl':
                         baseline_acl(opt)
-                    if opt.method == 'ours_cat':
-                        ours_cat(opt)
                     if opt.method == 'shared_only_ewc':
                         baseline_shared_only_ewc(opt)
                     if opt.method == 'ours_ewc':
@@ -236,9 +229,7 @@ if __name__ == '__main__':
                         pnn(opt)
                     if opt.method == 'muc_ewc':
                         muc_ewc(opt)
-                    if opt.method == 'hat':
-                        hat(opt) 
-        
+
         else:
             opt.set_seed = seed_dict[opt.data_name]
             opt.dset_seed = 6 - seed_dict[opt.data_name]
@@ -266,16 +257,12 @@ if __name__ == '__main__':
                     baseline_finetune(opt)
                 if opt.method == 'acl':
                     baseline_acl(opt)
-                if opt.method == 'ours_cat':
-                    ours_cat(opt)
                 if opt.method == 'shared_only_ewc':
                     baseline_shared_only_ewc(opt)
                 if opt.method == 'ours_ewc':
                     ours_ewc(opt)
                 if opt.method == 'muc':
                     muc(opt)
-                if opt.method == 'hat':
-                    hat(opt)
                 if opt.method == 'pnn':
                     pnn(opt)
                 if opt.method == 'muc_ewc':

@@ -3,3 +3,5 @@ __pycache__/
 *.$py.class
 
 */__pycache__/
+
+data_processed/

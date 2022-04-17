@@ -11,7 +11,6 @@ import torch.nn.functional as F
 
 from tools import count_parameters, classification_scores_ours, valid_loss_ours, classification_scores_cont, classification_scores_specific_only
 from augmentations import embed_data_cont
-from augmentations import add_noise
 import copy
 
 from prettytable import PrettyTable
@@ -51,8 +50,6 @@ def fisher_matrix_diag(data_id, dataloader, model, old_model, fisher, device):
 def ours_ewc(opt):
 
     from saint.ours_model import SAINT
-        # opt.transformer_depth = 3
-        # opt.attention_heads = 4
 
     # save_path = './results/' + '_'.join(saving_list) + '.csv'
     save_path = opt.result_path
@@ -85,15 +82,10 @@ def ours_ewc(opt):
                 categories = tuple(cat_dims_group[0]), 
                 num_continuous = len(con_idxs_group[0]),                
                 dim = opt.embedding_size,                           
-                dim_out = 1,                       
                 depth = opt.transformer_depth,                       
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
-                ff_dropout = opt.ff_dropout,                  
-                mlp_hidden_mults = (4, 2),       
-                cont_embeddings = opt.cont_embeddings,
-                attentiontype = opt.attentiontype,
-                final_mlp_style = opt.final_mlp_style,
+                ff_dropout = opt.ff_dropout,
                 y_dim = y_dims[0]
             )
             old_model = None
@@ -109,16 +101,6 @@ def ours_ewc(opt):
         model.to(device)
 
         ## Choosing the optimizer
-
-        # if opt.optimizer == 'SGD':
-        #     optimizer = optim.SGD(model.parameters(), lr=opt.lr,
-        #                         momentum=0.9, weight_decay=5e-4)
-        #     from utils import get_scheduler
-        #     scheduler = get_scheduler(opt, optimizer)
-        # elif opt.optimizer == 'Adam':
-        #     optimizer = optim.Adam(model.parameters(),lr=opt.lr)
-        # elif opt.optimizer == 'AdamW':
-        #     optimizer = optim.AdamW(model.parameters(),lr=opt.lr)
         
         optimizer = optim.AdamW(model.parameters(),lr=opt.lr)
         
