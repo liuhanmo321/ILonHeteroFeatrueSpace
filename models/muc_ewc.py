@@ -271,13 +271,15 @@ def muc_ewc(opt):
     print(result_matrix)
     total_parameters = count_parameters(model)
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
+    avg_forgetting = np.mean(np.array([result_matrix[temp_id, temp_id] - result_matrix[temp_id, opt.num_tasks-1] for temp_id in range(opt.num_tasks)]))
+
 
     emb_parameters = count_parameters(model.embeds) + count_parameters(model.simple_MLP)
     unlabeled_emb_parameters = count_parameters(model.unlabeled_embeds) + count_parameters(model.unlabeled_simple_MLP)
     
     print('Table for HyperParameters')
-    table = PrettyTable(['time', 'avg_acc', 'dist_frac', 'side_classifier', 'discrepancy', 'parameters', 'emb params', 'ulb params'])
-    table.add_row(['%.2f' %total_time, '%.4f' %np.mean(result_matrix[:, -1]), opt.distill_frac, num_side_classifier, opt.discrepancy, total_parameters, emb_parameters, unlabeled_emb_parameters])
+    table = PrettyTable(['time', 'avg_auc', 'avg_forg', 'dist_frac', 'side_classifier', 'discrepancy', 'parameters', 'emb params', 'ulb params'])
+    table.add_row(['%.2f' %total_time, '%.4f' %np.mean(result_matrix[:, -1]), '%.4f' %avg_forgetting, opt.distill_frac, num_side_classifier, opt.discrepancy, total_parameters, emb_parameters, unlabeled_emb_parameters])
     print(table)
 
     print('===========================================================================')

@@ -199,10 +199,12 @@ def ours_ewc(opt):
     print(result_matrix)
     total_parameters = count_parameters(model)
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
+    avg_forgetting = np.mean(np.array([result_matrix[temp_id, temp_id] - result_matrix[temp_id, opt.num_tasks-1] for temp_id in range(opt.num_tasks)]))
+
 
     print('Table for HyperParameters')
-    table = PrettyTable(['time', 'avg_acc', 'batch_size', 'distill_frac', 'alpha', 'beta', 'gamma', 'parameters'])
-    table.add_row(['%.2f' %total_time, '%.4f' %np.mean(result_matrix[:, -1]), opt.batchsize, opt.distill_frac, opt.alpha, opt.beta, opt.gamma, total_parameters])
+    table = PrettyTable(['time', 'avg_auc', 'avg_forg', 'batch_size', 'distill_frac', 'alpha', 'beta', 'gamma', 'parameters'])
+    table.add_row(['%.2f' %total_time, '%.4f' %np.mean(result_matrix[:, -1]), '%.4f' %avg_forgetting, opt.batchsize, opt.distill_frac, opt.alpha, opt.beta, opt.gamma, total_parameters])
     print(table)
 
     result_table = PrettyTable(['cmb auc', 'shared auc', 'specific auc'])

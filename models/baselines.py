@@ -138,10 +138,11 @@ def baseline_finetune(opt):
     print(result_matrix)
     total_parameters = count_parameters(model)
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
+    avg_forgetting = np.mean(np.array([result_matrix[temp_id, temp_id] - result_matrix[temp_id, opt.num_tasks-1] for temp_id in range(opt.num_tasks)]))
 
     print('Table for HyperParameters')
-    table = PrettyTable(['time', 'avg_acc', 'alpha', 'parameters'])
-    table.add_row([total_time, '%.4f' %np.mean(result_matrix[:, -1]), opt.alpha, total_parameters])
+    table = PrettyTable(['time', 'avg_auc', 'avg_forg', 'alpha', 'parameters'])
+    table.add_row([total_time, '%.4f' %np.mean(result_matrix[:, -1]), '%.4f' %avg_forgetting, opt.alpha, total_parameters])
 
     result_table = PrettyTable(['cmb auc', 'shared auc', 'specific auc'])
     result_table.add_row(['%.4f' %np.mean(result_matrix[:, -1]), '%.4f' %np.mean(shared_matrix[:, -1]), '%.4f' %np.mean(specific_matrix[:, -1])])
@@ -302,7 +303,7 @@ def baseline_joint(opt):
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
     
     print('Table for HyperParameters')
-    table = PrettyTable(['time', 'avg_acc', 'lr', 'alpha', 'parameters'])
+    table = PrettyTable(['time', 'avg_auc', 'lr', 'alpha', 'parameters'])
     table.add_row([total_time, '%.4f' %np.mean(result_matrix[:, -1]), opt.lr, opt.alpha, total_parameters])
 
     result_table = PrettyTable(['cmb auc', 'shared auc', 'specific auc'])
@@ -438,42 +439,6 @@ def baseline_ord_joint(opt):
                     if lr < opt.lr_lower_bound:
                         break
                     optimizer = optim.AdamW(model.parameters(),lr=lr)
-            # if epoch%5==0:
-            #     print('running_loss is:', running_loss)
-            #     model.eval()
-            #     with torch.no_grad():
-            #         sum_acc, sum_auroc = 0, 0
-            #         for temp_data_id in range(data_id + 1):
-            #             accuracy, auroc = classification_scores_cont(model, validloaders[temp_data_id], device, opt.task, temp_data_id)
-            #             sum_acc += accuracy
-            #             sum_auroc += auroc
-
-            #         accuracy = sum_acc / (data_id + 1)
-            #         auroc = sum_auroc / (data_id + 1)
-            #         print('[EPOCH %d] VALID ACCURACY: %.3f, VALID AUROC: %.3f' %
-            #             (epoch + 1, accuracy,auroc ))
-
-            #         if opt.active_log:
-            #             wandb.log({'valid_accuracy': accuracy ,'valid_auroc': auroc })       
-            #         if opt.task =='multiclass':
-            #             if accuracy > best_valid_accuracy:
-            #                 best_valid_accuracy = accuracy
-            #                 torch.save(model.state_dict(),'%s/bestmodel.pth' % (modelsave_path))
-            #         else:
-            #             # if accuracy > best_valid_accuracy:
-            #             #     best_valid_accuracy = accuracy
-            #             # if auroc > best_valid_auroc:
-            #             #     best_valid_auroc = auroc   
-            #             if running_loss < best_loss:
-            #                 best_loss = running_loss          
-            #                 # torch.save(model.state_dict(),'%s/bestmodel.pth' % (modelsave_path))
-            #                 stop_count = 0
-            #             else:
-            #                 stop_count += 1
-            #     model.train()
-
-            #     if stop_count == opt.earlystop:
-            #         break
 
         for temp_data_id in range(data_id + 1):
             temp_test_accuracy, temp_test_auroc = classification_scores_cont(model, testloaders[temp_data_id], device,  opt.task, temp_data_id)
@@ -482,10 +447,11 @@ def baseline_ord_joint(opt):
     print(result_matrix)
     total_parameters = count_parameters(model)
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
+    avg_forgetting = np.mean(np.array([result_matrix[temp_id, temp_id] - result_matrix[temp_id, opt.num_tasks-1] for temp_id in range(opt.num_tasks)]))
 
     print('Table for HyperParameters')
-    table = PrettyTable(['time', 'avg_acc', 'lr', 'parameters'])
-    table.add_row([total_time, '%.4f' %np.mean(result_matrix[:, -1]), opt.lr, total_parameters])
+    table = PrettyTable(['time', 'avg_auc', 'acg_forg', 'lr', 'parameters'])
+    table.add_row([total_time, '%.4f' %np.mean(result_matrix[:, -1]), '%.4f' %avg_forgetting, opt.lr, total_parameters])
     print(table)
     print('===========================================================================')
     with open(save_path, 'a+') as f:
