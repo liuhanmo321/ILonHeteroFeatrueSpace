@@ -32,7 +32,7 @@ parser.add_argument('--task', default='binary', type=str,choices = ['binary','mu
 parser.add_argument('--cont_embeddings', default='MLP', type=str,choices = ['MLP','Noemb','pos_singleMLP'])
 parser.add_argument('--embedding_size', default=8, type=int)
 parser.add_argument('--transformer_depth', default=4, type=int)
-parser.add_argument('--attention_heads', default=2, type=int) # Here I change from 2 to 4, remember to swtich back
+parser.add_argument('--attention_heads', default=2, type=int) 
 parser.add_argument('--attention_dropout', default=0.1, type=float)
 parser.add_argument('--ff_dropout', default=0.1, type=float)
 
@@ -57,8 +57,8 @@ parser.add_argument('-epochs', default=300, type=int)
 parser.add_argument('-batchsize', default=256, type=int)
 parser.add_argument('--savemodelroot', default='./bestmodels', type=str)
 parser.add_argument('--run_name', default='testrun', type=str)
-parser.add_argument('--set_seed', default= 1 , type=int)
-parser.add_argument('--dset_seed', default= 5 , type=int)
+parser.add_argument('-set_seed', default= 1 , type=int)
+parser.add_argument('-dset_seed', default= 5 , type=int)
 
 parser.add_argument('-alpha', default=0.2, type=float)
 parser.add_argument('-beta', default=0.1, type=float)
@@ -79,12 +79,8 @@ opt = parser.parse_args()
 
 seed_dict = {'aps': 1, 'bank': 1, 'blast_char': 3, 'income': 2, 'shoppers': 4, 'shrutime': 2, 'higgs': 4, 'jannis': 4, 'volkert': 3, 'mix': 1}
 
-if opt.data_name == 'mix':
-    opt.num_tasks = 5
 if opt.data_name == 'volkert' and opt.class_inc:
     opt.num_tasks = 5
-if opt.data_name == 'helena' and opt.class_inc:
-    opt.num_tasks = 20
 
 if __name__ == '__main__':
 
@@ -108,52 +104,46 @@ if __name__ == '__main__':
     if 'joint' in opt.method:
         opt.lr_lower_bound = opt.lr / 10
 
-    # hyper_search = True
     if opt.hyper_search:
         opt.set_seed = seed_dict[opt.data_name]
         opt.dset_seed = 6 - seed_dict[opt.data_name]
         
         opt.result_path = './results/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
-        os.makedirs('./results/' + opt.data_name + '/', exist_ok = True) 
+        os.makedirs('./results/' + opt.data_name + '/', exist_ok = True)
 
         space = {
-                # "batch_size": hp.choice("batch_size", [128, 256, 512]),
-                # "lr": hp.choice("lr", [0.0001, 0.00005, 0.00001]),
-                "T": hp.choice('T', [2, 4]),
-                # "T": hp.choice('T', [0.5, 1, 2, 4]),
+                "T": hp.choice('T', [2]),
                 "alpha": hp.choice("alpha", [0.1, 0.2, 0.3, 0.4, 0.5]),
-                # "beta": hp.choice("beta", [0.1, 0.2, 0.3, 0.4, 0.5]),
                 "dist_frac": hp.choice("dist_frac", [0.005, 0.1, 0.2, 0.5, 1, 2]),
-                # "dist_frac": hp.choice("dist_frac", [0.5, 1, 1.5, 2]),
                 "beta": hp.choice("beta", [0.1, 0.5, 1, 2, 5]),
-                # "alpha": hp.uniform("alpha", 0.1, 0.9),
-                # "beta": hp.uniform("beta", 0.1, 0.5),
                 "gamma": hp.choice("gamma", [5, 10, 15, 20, 25, 30])
         }
 
-        if opt.method == 'muc_ewc':
-            space['discrepancy'] = hp.choice("discrepancy", [0.1, 0.5, 1])
+        if opt.method == 'joint' or opt.method == 'ord_joint':
+            space['lr'] = hp.choice("lr", [0.0001, 0.0005])
+        
+        if opt.method == 'lwf' or opt.method == 'muc_lwf' or opt.method == 'ours_lwf':
+            space['T'] = hp.choice("T", [0.5, 1, 2, 4])
 
         def f(params):
             torch.manual_seed(1)
-            # opt.batchsize = params['batch_size']
-            # opt.lr = params['lr']
+
+            if opt.method == 'joint' or opt.method == 'ord_joint':
+                opt.lr = params['lr']
+
             opt.T = params['T']
             opt.alpha = params['alpha']
             opt.distill_frac = params['dist_frac']
             opt.beta = params['beta']
             opt.gamma = params['gamma']
 
-            if opt.method == 'muc_ewc':
-                opt.discrepancy = params['discrepancy']
-
             acc_mean = 0
             def run():
-                if opt.method == 'shared_only':
+                if opt.method == 'lwf':
                     acc = baseline_shared_only(opt)
                 if opt.method == 'specific_only':
                     acc = baseline_specific_only(opt)
-                if opt.method == 'ours':
+                if opt.method == 'ours_lwf':
                     acc = ours(opt)
                 if opt.method == 'joint':
                     acc = baseline_joint(opt)
@@ -163,14 +153,16 @@ if __name__ == '__main__':
                     acc = baseline_ord_joint(opt)
                 if opt.method == 'acl':
                     acc = baseline_acl(opt)           
-                if opt.method == 'shared_only_ewc':
+                if opt.method == 'ewc':
                     acc = baseline_shared_only_ewc(opt)
                 if opt.method == 'ours_ewc':
                     acc = ours_ewc(opt)
                 if opt.method == 'muc_ewc':
                     acc = muc_ewc(opt)
-                if opt.method == 'muc':
-                    acc = muc(opt) 
+                if opt.method == 'muc_lwf':
+                    acc = muc(opt)
+                if opt.method == 'pnn':
+                    acc = pnn(opt) 
                 return acc
 
             for _ in range(4):
@@ -183,6 +175,7 @@ if __name__ == '__main__':
                 f.write(table.get_string())
                 f.write('\n\n')
             return {'loss': -acc_mean, 'status': STATUS_OK}
+            
         
         trials = Trials()
         best = fmin(f, space, algo=tpe.suggest, max_evals=25, trials=trials)
@@ -191,9 +184,6 @@ if __name__ == '__main__':
     else:
         if opt.data_name == None:
             data_list = ['bank', 'blast_char', 'income', 'shoppers', 'shrutime']
-            # data_list = ['blast_char', 'income', 'shoppers', 'shrutime']
-            # data_list = ['income', 'shoppers', 'higgs', 'jannis']
-            # data_list = ['bank']
             for name in data_list:
                 torch.manual_seed(1)
                 opt.data_name = name
@@ -205,11 +195,11 @@ if __name__ == '__main__':
                 for i in range(4):
                 # opt.set_seed = i + 1
                 # opt.dset_seed = 5 - i
-                    if opt.method == 'shared_only':
+                    if opt.method == 'lwf':
                         baseline_shared_only(opt)
                     if opt.method == 'specific_only':
                         baseline_specific_only(opt)
-                    if opt.method == 'ours':
+                    if opt.method == 'ours_lwf':
                         ours(opt)
                     if opt.method == 'ord_joint':
                         baseline_ord_joint(opt)
@@ -219,11 +209,11 @@ if __name__ == '__main__':
                         baseline_finetune(opt)
                     if opt.method == 'acl':
                         baseline_acl(opt)
-                    if opt.method == 'shared_only_ewc':
+                    if opt.method == 'ewc':
                         baseline_shared_only_ewc(opt)
                     if opt.method == 'ours_ewc':
                         ours_ewc(opt)
-                    if opt.method == 'muc':
+                    if opt.method == 'muc_lwf':
                         muc(opt)
                     if opt.method == 'pnn':
                         pnn(opt)
@@ -236,14 +226,10 @@ if __name__ == '__main__':
             opt.result_path = './results/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
             os.makedirs('./results/' + opt.data_name + '/', exist_ok = True)
 
-            # if opt.data_name in ['mix', 'volkert']:
-            #     times = 3
-            # else:
-            #     times = 1
             times = 4
 
             for i in range(times): 
-                if opt.method == 'shared_only':
+                if opt.method == 'lwf':
                     baseline_shared_only(opt)
                 if opt.method == 'specific_only':
                     baseline_specific_only(opt)
@@ -257,11 +243,11 @@ if __name__ == '__main__':
                     baseline_finetune(opt)
                 if opt.method == 'acl':
                     baseline_acl(opt)
-                if opt.method == 'shared_only_ewc':
+                if opt.method == 'ewc':
                     baseline_shared_only_ewc(opt)
                 if opt.method == 'ours_ewc':
                     ours_ewc(opt)
-                if opt.method == 'muc':
+                if opt.method == 'muc_lwf':
                     muc(opt)
                 if opt.method == 'pnn':
                     pnn(opt)

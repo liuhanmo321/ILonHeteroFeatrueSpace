@@ -48,10 +48,10 @@ def process_data(path, data_name):
 
 if __name__ == '__main__':
     os.makedirs('./data_processed/', exist_ok = True) 
-    # process_aps()
+    process_aps()
     process_data('data/BlastChar/BlastChar.csv', 'blast_char')
-    # process_data('data/bank/bank-full.csv', 'bank')
-    # process_data('data/income/income.csv', 'income')
-    # process_data('data/shoppers/shoppers.csv', 'shoppers')
-    # process_data('data/shrutime/shrutime.csv', 'shturime')
-    # process_data('data/volkert/volkert.csv', 'volkert')
+    process_data('data/bank/bank-full.csv', 'bank')
+    process_data('data/income/income.csv', 'income')
+    process_data('data/shoppers/shoppers.csv', 'shoppers')
+    process_data('data/shrutime/shrutime.csv', 'shturime')
+    process_data('data/volkert/volkert.csv', 'volkert')
