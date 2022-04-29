@@ -233,7 +233,7 @@ if __name__ == '__main__':
                     baseline_shared_only(opt)
                 if opt.method == 'specific_only':
                     baseline_specific_only(opt)
-                if opt.method == 'ours':
+                if opt.method == 'ours_lwf':
                     ours(opt)
                 if opt.method == 'ord_joint':
                     baseline_ord_joint(opt)

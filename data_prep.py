@@ -53,5 +53,5 @@ if __name__ == '__main__':
     process_data('data/bank/bank-full.csv', 'bank')
     process_data('data/income/income.csv', 'income')
     process_data('data/shoppers/shoppers.csv', 'shoppers')
-    process_data('data/shrutime/shrutime.csv', 'shturime')
+    process_data('data/shrutime/shrutime.csv', 'shrutime')
     process_data('data/volkert/volkert.csv', 'volkert')
