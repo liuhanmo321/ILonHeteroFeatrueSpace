@@ -28,12 +28,12 @@ if opt.method == 'ewc':
     os.system("python main.py -method=ewc -gpu="+ gpu + " -comment=fg -distill_frac=1 -data_name=volkert -class_inc")
 
 if opt.method == 'muc_lwf':
-    # os.system("python main.py -epochs=1 -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=2 -distill_frac=1 -data_name=bank")
-    # os.system("python main.py -epochs=1 -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=4 -distill_frac=1 -data_name=blast_char")
-    # os.system("python main.py -epochs=1 -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=4 -distill_frac=0.005 -data_name=income")
-    # os.system("python main.py -epochs=1 -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=4 -distill_frac=0.1 -data_name=shoppers")
-    os.system("python main.py -epochs=1 -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=2 -distill_frac=0.5 -data_name=shrutime")
-    # os.system("python main.py -epochs=1 -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=2 -distill_frac=1 -data_name=volkert -class_inc")
+    os.system("python main.py -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=2 -distill_frac=1 -data_name=bank")
+    os.system("python main.py -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=4 -distill_frac=1 -data_name=blast_char")
+    os.system("python main.py -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=4 -distill_frac=0.005 -data_name=income")
+    os.system("python main.py -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=4 -distill_frac=0.1 -data_name=shoppers")
+    os.system("python main.py -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=2 -distill_frac=0.5 -data_name=shrutime")
+    os.system("python main.py -method=muc_lwf -gpu="+ gpu + " -comment=fg -T=2 -distill_frac=1 -data_name=volkert -class_inc")
 
 if opt.method == 'muc_ewc':
     os.system("python main.py -method=muc_ewc -gpu="+ gpu + " -comment=fg -data_name=bank")
