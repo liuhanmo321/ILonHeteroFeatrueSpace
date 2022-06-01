@@ -6,3 +6,7 @@ __pycache__/
 
 data_processed/
 results/
+
+*.ipynb
+run_hyper.py
+plot_feat.py

@@ -3,6 +3,7 @@ from sklearn.preprocessing import LabelEncoder
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import random
+from random import shuffle
 
 categorical_names = {
     'shoppers': ['OperatingSystems', 'Browser', 'Region', 'TrafficType', 'Weekend'],
@@ -155,7 +156,14 @@ class DataSetCatCon(Dataset):
         # X1 has categorical data, X2 has continuous
         return np.concatenate((self.cls[idx], self.X1[idx])), self.X2[idx],self.y[idx]
 
-def sub_data_prep(data_name, seed, task, datasplit=[.65, .15, .2], num_tasks=3, class_inc=False, length=None):
+# def sub_data_prep(data_name, seed, task, datasplit=[.65, .15, .2], num_tasks=3, class_inc=False, length=None, rearrange=False):
+def sub_data_prep(opt, datasplit=[.65, .15, .2], length=None):
+    data_name = opt.data_name
+    seed = opt.dset_seed
+    task = opt.dtask
+    num_tasks = opt.num_tasks
+    class_inc = opt.class_inc
+    rearrange = opt.shuffle
 
     np.random.seed(seed)
     random.seed(seed)
@@ -216,5 +224,18 @@ def sub_data_prep(data_name, seed, task, datasplit=[.65, .15, .2], num_tasks=3, 
                 testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
 
                 y_dims.append(len(np.unique(y_train['data'][:,0])))
+    
+    if rearrange:
+        order = [1, 2, 0]
+        # order = [2, 1, 0]
+        cat_dims_group = [cat_dims_group[i] for i in order]
+        con_idxs_group = [con_idxs_group[i] for i in order]
+        trainloaders = [trainloaders[i] for i in order]
+        validloaders = [validloaders[i] for i in order]
+        testloaders = [testloaders[i] for i in order]
+        y_dims = [y_dims[i] for i in order]
+        # shuffle(cat_dims_group), shuffle(con_idxs_group), shuffle(trainloaders), shuffle(validloaders), shuffle(testloaders), shuffle(y_dims)
 
     return cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims
+
+# def change_order()

@@ -55,7 +55,8 @@ def ours(opt):
 
     # Data Set Related
 
-    cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = sub_data_prep(opt.data_name, opt.dset_seed,opt.dtask, datasplit=[.65, .15, .2], num_tasks=opt.num_tasks, class_inc=opt.class_inc)
+    # cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = sub_data_prep(opt.data_name, opt.dset_seed,opt.dtask, datasplit=[.65, .15, .2], num_tasks=opt.num_tasks, class_inc=opt.class_inc)
+    cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = sub_data_prep(opt, datasplit=[.65, .15, .2])
 
     # Model Related
 
@@ -194,21 +195,37 @@ def ours(opt):
     result_table = PrettyTable(['cmb auc', 'shared auc', 'specific auc'])
     result_table.add_row(['%.4f' %np.mean(result_matrix[:, -1]), '%.4f' %np.mean(shared_matrix[:, -1]), '%.4f' %np.mean(specific_matrix[:, -1])])
     print('===========================================================================')
-    if not opt.hyper_search:
-        with open(save_path, 'a+') as f:
-            f.write(table.get_string())
-            f.write('\n')
-            f.write(result_table.get_string())
-            f.write('\n')
-            f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
-            f.write(str(result_matrix))
-            f.write('\n specific matrix \n')
-            f.write(str(specific_matrix))
-            f.write('\n shared_matrix \n')
-            f.write(str(shared_matrix))
-            f.write('\n')
-            f.write('====================================================================\n\n')
-            f.close()       
-    else:
-        return  np.mean(result_matrix[:, -1])
+    # if not opt.hyper_search:
+    #     with open(save_path, 'a+') as f:
+    #         f.write(table.get_string())
+    #         f.write('\n')
+    #         f.write(result_table.get_string())
+    #         f.write('\n')
+    #         f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
+    #         f.write(str(result_matrix))
+    #         f.write('\n specific matrix \n')
+    #         f.write(str(specific_matrix))
+    #         f.write('\n shared_matrix \n')
+    #         f.write(str(shared_matrix))
+    #         f.write('\n')
+    #         f.write('====================================================================\n\n')
+    #         f.close()       
+    # else:
+    #     return  np.mean(result_matrix[:, -1])
 
+    with open(save_path, 'a+') as f:
+        f.write(table.get_string())
+        f.write('\n')
+        f.write(result_table.get_string())
+        f.write('\n')
+        f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
+        f.write(str(result_matrix))
+        f.write('\n specific matrix \n')
+        f.write(str(specific_matrix))
+        f.write('\n shared_matrix \n')
+        f.write(str(shared_matrix))
+        f.write('\n')
+        f.write('====================================================================\n\n')
+        f.close()       
+    if opt.hyper_search:
+        return  np.mean(result_matrix[:, -1])

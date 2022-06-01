@@ -71,10 +71,20 @@ def muc_ewc(opt):
 
     # Data Set Related
 
-    cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = sub_data_prep(opt.data_name, opt.dset_seed,opt.dtask, datasplit=[.65, .15, .2], num_tasks=opt.num_tasks, class_inc=opt.class_inc)
+    # cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = sub_data_prep(opt.data_name, opt.dset_seed,opt.dtask, datasplit=[.65, .15, .2], num_tasks=opt.num_tasks, class_inc=opt.class_inc)
+    cat_dims_group, con_idxs_group, trainloaders, validloaders, testloaders, y_dims = sub_data_prep(opt, datasplit=[.65, .15, .2])
 
     lengths = [len(loader.dataset) for loader in trainloaders]
-    aps_cat_dims_group, aps_con_idxs_group, aps_trainloaders, _, _, _ = sub_data_prep('aps', opt.dset_seed,opt.dtask, datasplit=[1., 0., 0.], num_tasks=opt.num_tasks, class_inc=False, length=lengths)
+    class temp_opt:
+        data_name = 'aps'
+        dset_seed = opt.dset_seed
+        dtask = opt.dtask
+        num_tasks = opt.num_tasks
+        class_inc = False
+        shuffle = opt.shuffle
+
+    # aps_cat_dims_group, aps_con_idxs_group, aps_trainloaders, _, _, _ = sub_data_prep('aps', opt.dset_seed,opt.dtask, datasplit=[1., 0., 0.], num_tasks=opt.num_tasks, class_inc=False, length=lengths)
+    aps_cat_dims_group, aps_con_idxs_group, aps_trainloaders, _, _, _ = sub_data_prep(temp_opt(), datasplit=[1., 0., 0.], length=lengths)
 
     # Model Related
 

@@ -71,10 +71,10 @@ For parameters of ILEAHE-LwF and ILEAHE-EWC, the parameters are:
 | ILEAHE-EWC | 0.1                    | 0.5       | 0.5    | 2        | 1        | 1       |
 
 | 　       | gamma                  | 　        | 　     | 　       | 　       | 　      |
-|----------|------------------------|-----------|--------|----------|----------|---------|
+|----------|------|-----------|--------|----------|----------|---------|
 | 　       | bank | blastchar | income | shoppers | shrutime | volkert |
 | ILEAHE-LwF | 30 | 5         | 15     | 5       | 30       | 5       |
-| ILEAHE-EWC | 15                     | 10        | 25     | 25       | 15       | 10      |
+| ILEAHE-EWC | 15 | 10        | 25     | 25       | 15       | 10      |
 
 For parameters of LwF and EWC:
 
@@ -139,8 +139,44 @@ MUC-LwF and MUC-EWC
 
 Hyperparameters for ACL are adopted from original implementation, PNN doesn't include hyperparameters other than learning rate.
 
+### Parameter Selection Explanation
 
-**Data Set Info**
+**T** is for distillation loss and to make the difference between soft prediction possibilities less evident, and larger value leads to smaller difference. In practice, 2 or 4 are preferred.
+
+**Alpha** controls the weight of shared prediction in final prediction. Because of the forgetting issue, shared prediction is generally less effective than specific predictions, so the selected alphas are smaller than 0.5. On the other hand, if alpha is too small like 0.1, which makes final prediction equivalent to specific prediction, the AAUC begins to drop. This is due to the lost of benefit from assemble prediction.
+
+**Gamma** lifts the impact of discriminability score on the discriminative loss. Higher gamma makes larger punishment on smaller discriminability scores. The value is subjective to data sets.
+
+**Beta1 and Beta2** controls the effects of regularization loss and discriminative loss. Especially, Beta1 is preferred to be smaller. Because distillation loss has comparable value to the cross entropy loss and could negatively affect optimization on new data sets.
+
+
+### Hyperparameter Sensitivity Analysis
+
+The analysis is for ILEAHE-EWC, the model is robust to different hyper-parameters. Parameters related to the discriminative loss will affect more about the performance, as the effectiveness of specific features are subject to it.
+
+The performances (AAUC and std.) of changing alpha/beta1/beta2/gamma for ILEAHE-EWC
+
+| alpha | 0.1    | 0.2    | 0.3    | 0.4    | 0.5    |        |
+|-------|--------|--------|--------|--------|--------|--------|
+| AAUC  | 0.8161 | 0.8164 | 0.8166 | 0.8166 | 0.8166 |        |
+| std   | 0.0029 | 0.0030 | 0.0032 | 0.0034 | 0.0036 |        |
+
+| Beta1 | 0.0005 | 0.1    | 0.2    | 0.5    | 1      | 2      |
+|-------|--------|--------|--------|--------|--------|--------|
+| AAUC  | 0.8157 | 0.8161 | 0.8165 | 0.8175 | 0.8164 | 0.8182 |
+| std   | 0.0026 | 0.0031 | 0.0028 | 0.0016 | 0.0031 | 0.0024 |
+
+| Beta2 | 0.1    | 0.5    | 1      | 2      | 5      |        |
+|-------|--------|--------|--------|--------|--------|--------|
+| AAUC  | 0.8141 | 0.8174 | 0.8164 | 0.8154 | 0.8154 |        |
+| std   | 0.0035 | 0.0021 | 0.0031 | 0.0027 | 0.0037 |        |
+
+| Gamma | 5      | 10     | 15     | 20     | 25     | 30     |
+|-------|--------|--------|--------|--------|--------|--------|
+| AAUC  | 0.8164 | 0.8152 | 0.8164 | 0.817  | 0.8174 | 0.817  |
+| std   | 0.0027 | 0.0029 | 0.0031 | 0.0023 | 0.0043 | 0.0023 |
+
+### **Data Set Info**
 
 
 |     Name             |     Data Amount    |     Cate Feat    |     Num Feat    |     Classes    |     Pos Rate (%)    |     Link                                                                                    |
