@@ -150,7 +150,7 @@ Hyperparameters for ACL are adopted from original implementation, PNN doesn't in
 **Beta1 and Beta2** controls the effects of regularization loss and discriminative loss. Especially, Beta1 is preferred to be smaller. Because distillation loss has comparable value to the cross entropy loss and could negatively affect optimization on new data sets.
 
 
-### Hyperparameter Sensitivity Analysis
+### **Hyperparameter Sensitivity Analysis**
 
 The analysis is for ILEAHE-EWC, the model is robust to different hyper-parameters. Parameters related to the discriminative loss will affect more about the performance, as the effectiveness of specific features are subject to it.
 
