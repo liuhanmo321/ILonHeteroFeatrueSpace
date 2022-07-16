@@ -30,6 +30,7 @@ def get_scheduler(args, optimizer):
 
 def classification_scores_cont(model, dloader, device, task, data_id):
     model.eval()
+    feat_idx = 0 if model.extractor_type == 'transformer' else -1
     m = nn.Softmax(dim=1)
     y_test = torch.empty(0).to(device)
     y_pred = torch.empty(0).to(device)
@@ -37,9 +38,13 @@ def classification_scores_cont(model, dloader, device, task, data_id):
     with torch.no_grad():
         for i, data in enumerate(dloader, 0):
             x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
-            _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
-            reps = model.shared_extractor(x_categ_enc, x_cont_enc)
-            y_reps = reps[:,0,:]
+            _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)
+            if model.extractor_type == 'mlp':
+                unified_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                y_reps = model.shared_extractor(unified_output)
+            else:
+                reps = model.shared_extractor(x_categ_enc, x_cont_enc)
+                y_reps = reps[:,feat_idx,:]
             y_outs = model.shared_classifier[data_id](y_reps)
             # import ipdb; ipdb.set_trace()   
             y_test = torch.cat([y_test,y_gts.squeeze().float()],dim=0)
@@ -57,6 +62,7 @@ def classification_scores_cont(model, dloader, device, task, data_id):
 
 def classification_scores_specific_only(model, dloader, device, task, data_id):
     model.eval()
+    feat_idx = 0 if model.extractor_type == 'transformer' else -1
     m = nn.Softmax(dim=1)
     y_test = torch.empty(0).to(device)
     y_pred = torch.empty(0).to(device)
@@ -64,9 +70,13 @@ def classification_scores_specific_only(model, dloader, device, task, data_id):
     with torch.no_grad():
         for i, data in enumerate(dloader, 0):
             x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
-            _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
-            reps = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)
-            y_reps = reps[:,0,:]
+            _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)  
+            if model.extractor_type == 'mlp':
+                unified_output = model.specific_unifier[data_id](x_categ_enc, x_cont_enc)
+                y_reps = model.specific_extractor[data_id](unified_output)
+            else:
+                reps = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)
+                y_reps = reps[:,feat_idx,:]
             y_outs = model.specific_classifier[data_id](y_reps)
             # import ipdb; ipdb.set_trace()   
             y_test = torch.cat([y_test,y_gts.squeeze().float()],dim=0)
@@ -84,6 +94,7 @@ def classification_scores_specific_only(model, dloader, device, task, data_id):
 def classification_scores_ours(model, dloader, device, task, data_id, alpha):
     model.eval()
     # m = nn.Softmax(dim=1)
+    feat_idx = 0 if model.extractor_type == 'transformer' else -1
     y_test = torch.empty(0).to(device)
     y_pred = torch.empty(0).to(device)
     prob = torch.empty(0).to(device)
@@ -92,11 +103,19 @@ def classification_scores_ours(model, dloader, device, task, data_id, alpha):
             x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
             _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)
 
-            shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+            if model.extractor_type == 'mlp':
+                unified_shared_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                shared_feature = model.shared_extractor(unified_shared_output)
+            else:
+                shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
             shared_output = model.shared_classifier[data_id](shared_feature)
             shared_p = torch.softmax(shared_output, dim=1)
 
-            specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,0,:]
+            if model.extractor_type == 'mlp':
+                unified_specific_output = model.specific_unifier[data_id](x_categ_enc, x_cont_enc)
+                specific_feature = model.specific_extractor[data_id](unified_specific_output)
+            else:
+                specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,feat_idx,:]
             specific_output = model.specific_classifier[data_id](specific_feature)
             specific_p = torch.softmax(specific_output, dim=1)
             
@@ -204,6 +223,7 @@ def MultiClassCrossEntropy(logits, labels, T):
 
 def classification_scores_muc(model, dloader, device, task, data_id):
     model.eval()
+    feat_idx = 0 if model.extractor_type == 'transformer' else -1
     m = nn.Softmax(dim=1)
     y_test = torch.empty(0).to(device)
     y_pred = torch.empty(0).to(device)
@@ -211,9 +231,13 @@ def classification_scores_muc(model, dloader, device, task, data_id):
     with torch.no_grad():
         for i, data in enumerate(dloader, 0):
             x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
-            _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
-            reps = model.shared_extractor(x_categ_enc, x_cont_enc)
-            y_reps = reps[:,0,:]
+            _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)     
+            if model.extractor_type == 'mlp':
+                unified_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                y_reps = model.shared_extractor(unified_output)
+            else:
+                reps = model.shared_extractor(x_categ_enc, x_cont_enc)
+                y_reps = reps[:,feat_idx,:]
             side_y_outs = [classifier(y_reps) for classifier in model.side_classifier[data_id]]            
             y_outs = 0
             for temp_out in side_y_outs:
@@ -234,6 +258,7 @@ def classification_scores_muc(model, dloader, device, task, data_id):
 
 def classification_scores_pnn(model, dloader, device, task, data_id):
     model.eval()
+    # feat_idx = 0 if model.extractor_type == 'transformer' else -1
     m = nn.Softmax(dim=1)
     y_test = torch.empty(0).to(device)
     y_pred = torch.empty(0).to(device)

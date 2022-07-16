@@ -55,6 +55,7 @@ def pnn(opt):
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
                 y_dim = y_dims[0],
+                extractor_type = opt.extractor_type
             )
         else:
             model.cpu()

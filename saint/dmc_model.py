@@ -103,11 +103,11 @@ class SAINT(nn.Module):
             self.shared_extractor = MLPModel(dim, int(self.depth / 2), attn_dropout)
     
         self.shared_classifier = nn.ModuleList([simple_MLP([dim, int(self.hidden_dims / 2), y_dim])])
-        self.side_classifier = nn.ModuleList(
-            [nn.ModuleList(
-                [simple_MLP([dim, int(self.hidden_dims / 2), y_dim]) for _ in range(self.num_side_classifier)]
-            )]
-        )
+        # self.side_classifier = nn.ModuleList(
+        #     [nn.ModuleList(
+        #         [simple_MLP([dim, int(self.hidden_dims / 2), y_dim]) for _ in range(self.num_side_classifier)]
+        #     )]
+        # )
 
         # end modification        
         
@@ -135,9 +135,9 @@ class SAINT(nn.Module):
         )
         
         self.shared_classifier.append(simple_MLP([self.dim, int(self.hidden_dims / 2), y_dim]))
-        self.side_classifier.append(
-            nn.ModuleList([simple_MLP([self.dim, int(self.hidden_dims / 2), y_dim]) for _ in range(self.num_side_classifier)])
-        )
+        # self.side_classifier.append(
+        #     nn.ModuleList([simple_MLP([self.dim, int(self.hidden_dims / 2), y_dim]) for _ in range(self.num_side_classifier)])
+        # )
     
     def add_unlabeled_task(self, categories, num_continuous, y_dim):
         total_tokens = sum(categories)

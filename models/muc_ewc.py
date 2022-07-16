@@ -25,13 +25,18 @@ def fisher_matrix_diag(data_id, dataloader, model, old_model, fisher, device):
         temp_fisher[n]=0*p.data
     # Compute
     model.train()
+    feat_idx = 0 if model.extractor_type == 'transformer' else -1
     num_side_classifier = len(model.side_classifier[0])
     for i, data in enumerate(dataloader, 0):
         x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
         _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id) 
         
         model.zero_grad()
-        shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+        if model.extractor_type == 'mlp':
+            unified_shared_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+            shared_feature = model.shared_extractor(unified_shared_output)
+        else:
+            shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
         shared_output = model.shared_classifier[data_id](shared_feature)
         loss = nn.CrossEntropyLoss().to(device)(shared_output, y_gts.squeeze())
         side_outputs = [model.side_classifier[data_id][i](shared_feature) for i in range(num_side_classifier)]
@@ -82,6 +87,8 @@ def muc_ewc(opt):
         num_tasks = opt.num_tasks
         class_inc = False
         shuffle = opt.shuffle
+        order = opt.order
+        num_workers = opt.num_workers
 
     # aps_cat_dims_group, aps_con_idxs_group, aps_trainloaders, _, _, _ = sub_data_prep('aps', opt.dset_seed,opt.dtask, datasplit=[1., 0., 0.], num_tasks=opt.num_tasks, class_inc=False, length=lengths)
     aps_cat_dims_group, aps_con_idxs_group, aps_trainloaders, _, _, _ = sub_data_prep(temp_opt(), datasplit=[1., 0., 0.], length=lengths)
@@ -98,7 +105,7 @@ def muc_ewc(opt):
         raise'case not written yet'
     ce = nn.CrossEntropyLoss().to(device)
     
-
+    feat_idx = 0 if opt.extractor_type == 'transformer' else -1
     result_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
 
     total_time = 0
@@ -116,7 +123,8 @@ def muc_ewc(opt):
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
                 y_dim = y_dims[0],
-                num_side_classifier = num_side_classifier
+                num_side_classifier = num_side_classifier,
+                extractor_type = opt.extractor_type
             )
             model.add_unlabeled_task(tuple(aps_cat_dims_group[data_id]), len(aps_con_idxs_group[data_id]), y_dims[data_id])
             old_model = None
@@ -159,8 +167,12 @@ def muc_ewc(opt):
 
                 x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
                 _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
-                    
-                shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+                
+                if opt.extractor_type == 'mlp':
+                    unified_shared_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                    shared_feature = model.shared_extractor(unified_shared_output)
+                else:
+                    shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
                 shared_output = model.shared_classifier[data_id](shared_feature)
                 
                 loss = ce(shared_output, y_gts.squeeze())
@@ -233,13 +245,21 @@ def muc_ewc(opt):
                 unlabeled_x_categ, unlabeled_x_cont = unlabeled_data[0].to(device), unlabeled_data[1].to(device)
                 _ , unlabeled_x_categ_enc, unlabeled_x_cont_enc = embed_data_cont(unlabeled_x_categ, unlabeled_x_cont, model, data_id, unlabeled=True)           
                     
-                shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+                if opt.extractor_type == 'mlp':
+                    unified_shared_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                    shared_feature = model.shared_extractor(unified_shared_output)
+                else:
+                    shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
                 side_outputs = [model.side_classifier[data_id][i](shared_feature) for i in range(num_side_classifier)]
                 
                 for i in range(num_side_classifier):
                     loss += ce(side_outputs[i], y_gts.squeeze())
                 
-                unlabeled_shared_feature = model.shared_extractor(unlabeled_x_categ_enc, unlabeled_x_cont_enc)[:,0,:]
+                if opt.extractor_type == 'mlp':
+                    unlabeled_unified_shared_output = model.unlabeled_shared_unifier[data_id](unlabeled_x_categ_enc, unlabeled_x_cont_enc)
+                    unlabeled_shared_feature = model.shared_extractor(unlabeled_unified_shared_output)
+                else:
+                    unlabeled_shared_feature = model.shared_extractor(unlabeled_x_categ_enc, unlabeled_x_cont_enc)[:,feat_idx,:]
                 unlabeled_side_outputs = [model.side_classifier[data_id][i](unlabeled_shared_feature) for i in range(num_side_classifier)]
                 unlabeled_side_outputs = [torch.softmax(output, dim=1) for output in unlabeled_side_outputs]
                 loss_discrepancy = 0
@@ -293,15 +313,18 @@ def muc_ewc(opt):
     print(table)
 
     print('===========================================================================')
-    if not opt.hyper_search:
-        with open(save_path, 'a+') as f:
-            f.write(table.get_string())
-            f.write('\n')
-            f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
-            f.write(str(result_matrix))
-            f.write('\n')
-            f.write('====================================================================\n\n')
-            f.close()       
-    else:
+    # if not opt.hyper_search:
+    with open(save_path, 'a+') as f:
+        f.write(table.get_string())
+        f.write('\n')
+        f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
+        f.write(str(result_matrix))
+        f.write('\n')
+        f.write('====================================================================\n\n')
+        f.close()       
+    # else:
+    #     return  np.mean(result_matrix[:, -1])
+
+    if opt.hyper_search:
         return  np.mean(result_matrix[:, -1])
 

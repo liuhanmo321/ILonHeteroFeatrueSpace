@@ -35,7 +35,8 @@ class SAINT(nn.Module):
         attn_dropout = 0.,
         ff_dropout = 0.,
         y_dim = 2,
-        condition = None
+        condition = None,
+        extractor_type = 'transformer'
         ):
         super().__init__()
         assert all(map(lambda n: n > 0, categories)), 'number of each category must be positive'
@@ -58,7 +59,7 @@ class SAINT(nn.Module):
         self.norm = nn.LayerNorm(num_continuous)
         # self.num_continuous = num_continuous
         self.num_continuous = [num_continuous]
-
+        num_categorical = len(categories)
         # extractor parameters
         self.dim = dim
         self.depth = depth
@@ -66,6 +67,7 @@ class SAINT(nn.Module):
         self.dim_head = dim_head
         self.attn_dropout = attn_dropout
         self.ff_dropout = ff_dropout
+        self.extractor_type = extractor_type
 
         # structure parameters
         self.condition = condition
@@ -85,29 +87,88 @@ class SAINT(nn.Module):
         # end modifying embeddings
 
         # start modification
+
+        if extractor_type == 'mlp':
+            self.shared_unifier = nn.ModuleList([UnifierModel(num_categorical, num_continuous, dim, attn_dropout)])
+            self.specific_unifier = nn.ModuleList([UnifierModel(num_categorical, num_continuous, dim, attn_dropout)])
+
         if condition != 'specific_only':
-            self.shared_extractor = Transformer(
-                    dim = dim,
-                    depth = depth,
-                    heads = heads,
-                    dim_head = dim_head,
-                    attn_dropout = attn_dropout,
-                    ff_dropout = ff_dropout
-                )
+            if extractor_type == 'transformer':
+                self.shared_extractor = Transformer(
+                        dim = dim,
+                        depth = depth,
+                        heads = heads,
+                        dim_head = dim_head,
+                        attn_dropout = attn_dropout,
+                        ff_dropout = ff_dropout
+                    )
+            elif extractor_type == 'rnn':
+                self.shared_extractor = RNNModel(
+                        dim = dim,
+                        depth = int(depth / 2),
+                        heads = heads,
+                        dim_head = dim_head,
+                        attn_dropout = attn_dropout,
+                        ff_dropout = ff_dropout
+                    )        
+            elif extractor_type == 'gru':
+                self.shared_extractor = GRUModel(
+                        dim = dim,
+                        depth = int(self.depth / 2),
+                        heads = heads,
+                        dim_head = dim_head,
+                        attn_dropout = attn_dropout,
+                        ff_dropout = ff_dropout
+                    )
+            elif extractor_type == 'mlp':
+                self.shared_extractor = MLPModel(dim, int(self.depth / 2), attn_dropout)
+
             self.shared_classifier = nn.ModuleList([simple_MLP([dim, int(self.hidden_dims / 2), y_dim])])
 
         if condition != 'shared_only':
-            self.specific_extractor = nn.ModuleList(
-                    [Transformer(
+            if extractor_type == 'transformer':
+                self.specific_extractor = nn.ModuleList(
+                        [Transformer(
+                                dim = dim,
+                                depth = int(depth / 2),
+                                # depth = 1,
+                                heads = heads,
+                                dim_head = dim_head,
+                                attn_dropout = attn_dropout,
+                                ff_dropout = ff_dropout
+                        )]
+                    )
+            elif extractor_type == 'rnn':
+                self.specific_extractor = nn.ModuleList(
+                        [RNNModel(
                             dim = dim,
-                            depth = int(depth / 2),
-                            # depth = 1,
+                            depth = int(depth / 4),
                             heads = heads,
                             dim_head = dim_head,
                             attn_dropout = attn_dropout,
                             ff_dropout = ff_dropout
+                        )]
+                    )
+            elif extractor_type == 'gru':
+                self.specific_extractor = nn.ModuleList(
+                    [GRUModel(
+                        dim = dim,
+                        depth = int(self.depth / 4),
+                        heads = heads,
+                        dim_head = dim_head,
+                        attn_dropout = attn_dropout,
+                        ff_dropout = ff_dropout
+                        )]
+                    )
+            elif extractor_type == 'mlp':
+                self.specific_extractor = nn.ModuleList(
+                    [MLPModel(
+                        dim = dim,
+                        depth = int(self.depth / 4),
+                        dropout=attn_dropout
                     )]
                 )
+                                 
             self.specific_classifier = nn.ModuleList([simple_MLP([dim, int(self.hidden_dims / 2), y_dim])])       
 
         # end modification        
@@ -119,6 +180,7 @@ class SAINT(nn.Module):
     def add_task(self, categories, num_continuous, y_dim):
         total_tokens = sum(categories)
         self.num_continuous.append(num_continuous)
+        num_categorical = len(categories)
 
         temp_categories_offset = F.pad(torch.tensor(list(categories)), (1, 0), value = 0)
         temp_categories_offset = temp_categories_offset.cumsum(dim = -1)[:-1]
@@ -133,16 +195,46 @@ class SAINT(nn.Module):
             nn.ModuleList([simple_MLP([1,self.embed_dim,self.dim]) for _ in range(num_continuous)])
         )
 
+        if self.extractor_type == 'mlp':
+            self.shared_unifier.append(UnifierModel(num_categorical, num_continuous, self.dim, self.attn_dropout))
+            self.specific_unifier.append(UnifierModel(num_categorical, num_continuous, self.dim, self.attn_dropout))
+
         if self.condition != 'shared_only':
-            self.specific_extractor.append(Transformer(
-                            dim = self.dim,
-                            depth = int(self.depth / 2),
-                            # depth = 1,
-                            heads = self.heads,
-                            dim_head = self.dim_head,
-                            attn_dropout = self.attn_dropout,
-                            ff_dropout = self.ff_dropout
-                    ))
+            if self.extractor_type == 'transformer':
+                self.specific_extractor.append(Transformer(
+                                dim = self.dim,
+                                depth = int(self.depth / 2),
+                                # depth = 1,
+                                heads = self.heads,
+                                dim_head = self.dim_head,
+                                attn_dropout = self.attn_dropout,
+                                ff_dropout = self.ff_dropout
+                        ))
+            elif self.extractor_type == 'rnn':
+                self.specific_extractor.append(RNNModel(
+                                dim = self.dim,
+                                depth = int(self.depth / 4),
+                                # depth = 1,
+                                heads = self.heads,
+                                dim_head = self.dim_head,
+                                attn_dropout = self.attn_dropout,
+                                ff_dropout = self.ff_dropout
+                        ))      
+            elif self.extractor_type == 'gru':
+                self.specific_extractor.append(GRUModel(
+                                dim = self.dim,
+                                depth = int(self.depth / 4),
+                                heads = self.heads,
+                                dim_head = self.dim_head,
+                                attn_dropout = self.attn_dropout,
+                                ff_dropout = self.ff_dropout
+                        ))
+            elif self.extractor_type == 'mlp':
+                self.specific_extractor.append(MLPModel(
+                                dim = self.dim,
+                                depth = int(self.depth / 4),
+                                dropout = self.attn_dropout,
+                        ))                
             self.specific_classifier.append(simple_MLP([self.dim, int(self.hidden_dims / 2), y_dim]))
         
         if self.condition != 'specific_only':

@@ -52,6 +52,8 @@ def muc(opt):
         num_tasks = opt.num_tasks
         class_inc = False
         shuffle = opt.shuffle
+        order = opt.order
+        num_workers = opt.num_workers
 
     # aps_cat_dims_group, aps_con_idxs_group, aps_trainloaders, _, _, _ = sub_data_prep('aps', opt.dset_seed,opt.dtask, datasplit=[1., 0., 0.], num_tasks=opt.num_tasks, class_inc=False, length=lengths)
     aps_cat_dims_group, aps_con_idxs_group, aps_trainloaders, _, _, _ = sub_data_prep(temp_opt(), datasplit=[1., 0., 0.], length=lengths)
@@ -78,7 +80,8 @@ def muc(opt):
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
                 y_dim = y_dims[0],
-                num_side_classifier = num_side_classifier
+                num_side_classifier = num_side_classifier,
+                extractor_type = opt.extractor_type
             )
             model.add_unlabeled_task(tuple(aps_cat_dims_group[data_id]), len(aps_con_idxs_group[data_id]), y_dims[data_id])
         else:
@@ -235,6 +238,7 @@ def muc(opt):
             temp_test_accuracy, temp_test_auroc = classification_scores_muc(model, testloaders[temp_data_id], device,  opt.task, temp_data_id)
             result_matrix[temp_data_id, data_id] = temp_test_auroc
         
+    
     print(result_matrix)
     total_parameters = count_parameters(model)
     print('TOTAL NUMBER OF PARAMS: %d' %(total_parameters))
@@ -250,23 +254,26 @@ def muc(opt):
     print(table)
 
     print('===========================================================================')
-    if not opt.hyper_search:
-        with open(save_path, 'a+') as f:
-            f.write(table.get_string())
-            f.write('\n')
-            f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
-            f.write(str(result_matrix))
-            f.write('\n')
-            f.write('====================================================================\n\n')
-            f.close()       
-    else:
-        with open(save_path, 'a+') as f:
-            f.write(table.get_string())
-            f.write('\n')
-            f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
-            f.write(str(result_matrix))
-            f.write('\n')
-            f.write('====================================================================\n\n')
-            f.close() 
+    # if not opt.hyper_search:
+    #     with open(save_path, 'a+') as f:
+    #         f.write(table.get_string())
+    #         f.write('\n')
+    #         f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
+    #         f.write(str(result_matrix))
+    #         f.write('\n')
+    #         f.write('====================================================================\n\n')
+    #         f.close()       
+    # else:
+    with open(save_path, 'a+') as f:
+        f.write(table.get_string())
+        f.write('\n')
+        f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
+        f.write(str(result_matrix))
+        f.write('\n')
+        f.write('====================================================================\n\n')
+        f.close() 
+        # return  np.mean(result_matrix[:, -1])
+
+    if opt.hyper_search:
         return  np.mean(result_matrix[:, -1])
 

@@ -24,11 +24,11 @@ def fisher_matrix_diag(data_id, dataloader, model, old_model, fisher, device):
     for n,p in model.shared_extractor.named_parameters():
         temp_fisher[n]=0*p.data
     # Compute
+
     model.train()
     feat_idx = 0 if model.extractor_type == 'transformer' else -1
     for i, data in enumerate(dataloader, 0):
         x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
-        # print(x_categ.shape)
         _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id) 
         model.zero_grad()
         shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
@@ -48,7 +48,37 @@ def fisher_matrix_diag(data_id, dataloader, model, old_model, fisher, device):
         temp_fisher[n]=Variable(temp_fisher[n],requires_grad=False)
     return temp_fisher
 
-def baseline_shared_only_ewc(opt):   
+
+def fisher_matrix_diag_emp(data_id, dataloader, model, device):
+    # Init
+    temp_fisher={}
+    for n,p in model.shared_extractor.named_parameters():
+        temp_fisher[n]=0*p.data
+    # Compute
+
+    model.train()
+    feat_idx = 0 if model.extractor_type == 'transformer' else -1
+    for i, data in enumerate(dataloader, 0):
+        x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
+        _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id) 
+        model.zero_grad()
+        shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
+        shared_output = model.shared_classifier[data_id](shared_feature)
+        loss = nn.CrossEntropyLoss().to(device)(shared_output, y_gts.squeeze())
+        loss.backward()
+        # Get gradients
+        for n,p in model.shared_extractor.named_parameters():
+            if p.grad is not None:
+                temp_fisher[n]+=x_categ.shape[0] * p.grad.data.pow(2)
+    # Mean
+    with torch.no_grad():
+        for n,_ in model.shared_extractor.named_parameters():
+            temp_fisher[n]=temp_fisher[n]/len(dataloader.dataset)
+            temp_fisher[n]=Variable(temp_fisher[n],requires_grad=False)
+    return temp_fisher
+
+
+def afec(opt):   
     if opt.shrink:
         from saint.ours_model import SAINT
     else:
@@ -91,6 +121,7 @@ def baseline_shared_only_ewc(opt):
                 extractor_type = opt.extractor_type
             )
             old_model = None
+            model_emp = copy.deepcopy(model)
         else:
             model.cpu()
             model.add_task(tuple(cat_dims_group[data_id]), len(con_idxs_group[data_id]), y_dims[data_id])
@@ -101,10 +132,15 @@ def baseline_shared_only_ewc(opt):
                 params.requires_grad = False
             old_model.to(device)
 
+            model_emp.cpu()
+            model_emp.add_task(tuple(cat_dims_group[data_id]), len(con_idxs_group[data_id]), y_dims[data_id])
+
         model.to(device)
+        model_emp.to(device)
 
         ## Choosing the optimizer        
         optimizer = optim.AdamW(model.parameters(),lr=opt.lr)
+        optimizer_emp = optim.AdamW(model_emp.parameters(), lr=opt.lr)
         
         lr = opt.lr
         best_loss = np.inf
@@ -113,6 +149,30 @@ def baseline_shared_only_ewc(opt):
         for epoch in range(opt.epochs):
             start_time = time.time()
             model.train()
+            model_emp.train()
+
+            model_emp.to(device)
+            for i, data in enumerate(trainloaders[data_id], 0):
+                optimizer_emp.zero_grad()
+                
+                x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
+                _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)                 
+                shared_output = model_emp.shared_extractor(x_categ_enc, x_cont_enc)
+                shared_feature = shared_output[:,feat_idx,:]
+                y_outs = model_emp.shared_classifier[data_id](shared_feature)
+                loss = ce(y_outs,y_gts.squeeze())
+
+                loss.backward()
+                optimizer_emp.step()
+            
+            model_emp.cpu()
+            model_emp_temp = copy.deepcopy(model_emp)
+            model_emp_temp.to(device)
+            # for params in model_emp_temp.parameters():
+            #     params.requires_grad = False
+            
+            fisher_emp = fisher_matrix_diag_emp(data_id, trainloaders[data_id], model_emp_temp, device)
+
             running_loss = 0.0
             running_fisher_loss = 0.0
             for i, data in enumerate(trainloaders[data_id], 0):
@@ -126,16 +186,22 @@ def baseline_shared_only_ewc(opt):
                 loss = ce(y_outs,y_gts.squeeze())
 
                 fisher_loss = 0.0
+                fisher_emp_loss = 0.0
                 if not opt.no_distill and data_id > 0:
                     for (name, param),(_, param_old) in zip(model.shared_extractor.named_parameters(),old_model.shared_extractor.named_parameters()):
                         fisher_loss+=torch.sum(fisher[name]*(param_old-param).pow(2))/2
+                    
+                    for (name, param),(_, param_old) in zip(model.shared_extractor.named_parameters(),model_emp_temp.shared_extractor.named_parameters()):
+                        fisher_emp_loss+=torch.sum(fisher_emp[name]*(param_old-param).pow(2))/2                    
                 
-                loss = loss + 5000 * fisher_loss * opt.distill_frac
+
+                loss = loss + 5000 * fisher_loss * opt.distill_frac + 50 * fisher_emp_loss * opt.alpha
                 loss.backward()
                 optimizer.step()
                 running_loss += loss.item()
                 if data_id > 0 and not opt.no_distill:
-                    running_fisher_loss += 5000 * fisher_loss.item()
+                    running_fisher_loss += 5000 * fisher_loss.item() * opt.distill_frac + 50 * fisher_emp_loss.item() * opt.alpha
+
             end_time = time.time()
             total_time += end_time - start_time
             
@@ -197,3 +263,5 @@ def baseline_shared_only_ewc(opt):
         f.close()
     if opt.hyper_search:
         return  np.mean(result_matrix[:, -1])
+
+

@@ -1,3 +1,4 @@
+
 import torch
 from torch import nn
 # from saint.ours_model import SAINT
@@ -67,6 +68,7 @@ def ours(opt):
     result_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
     shared_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
     specific_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
+    feat_idx = 0 if opt.extractor_type == 'transformer' else -1
 
     total_time = 0
 
@@ -81,7 +83,8 @@ def ours(opt):
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
-                y_dim = y_dims[0]
+                y_dim = y_dims[0],
+                extractor_type = opt.extractor_type
             )
         else:
             model.cpu()
@@ -110,9 +113,16 @@ def ours(opt):
 
                 x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
                 _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
-                    
-                specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,0,:]
-                shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+                
+                if opt.extractor_type == 'mlp':
+                    unified_shared_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                    shared_feature = model.shared_extractor(unified_shared_output)
+                    unified_specific_output = model.specific_unifier[data_id](x_categ_enc, x_cont_enc)
+                    specific_feature = model.specific_extractor[data_id](unified_specific_output)
+                else:
+                    specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,feat_idx,:]
+                    shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
+
                 specific_output = model.specific_classifier[data_id](specific_feature)                
                 shared_output = model.shared_classifier[data_id](shared_feature)
                 
@@ -121,7 +131,10 @@ def ours(opt):
 
                 if data_id > 0 and not opt.no_discrim:
                     with torch.no_grad():
-                        specific_features = [model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,0,:] for temp_id in range(data_id + 1)]
+                        if opt.extractor_type == 'mlp':
+                            specific_features = [model.specific_extractor[temp_id](unified_specific_output) for temp_id in range(data_id + 1)]
+                        else:
+                            specific_features = [model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,feat_idx,:] for temp_id in range(data_id + 1)]
                         specific_outputs = [model.specific_classifier[data_id](specific_features[temp_id]) for temp_id in range(data_id +1)]
                         specific_p = [torch.softmax(output, dim=1) for output in specific_outputs]
                         label_p = [-nn.NLLLoss(reduction='none')(p, y_gts.squeeze()) for p in specific_p]
@@ -142,8 +155,17 @@ def ours(opt):
                     with torch.no_grad():
                         # temp_categ_enc, temp_cont_enc = x_categ_enc.detach(), Variable(x_cont_enc.data, requires_grad=False)
                         temp_categ_enc, temp_cont_enc = x_categ_enc.detach(), x_cont_enc.detach()
-                        old_shared_feature = old_shared_extractor(temp_categ_enc, temp_cont_enc)[:,0,:]
-                    shared_feature =  model.shared_extractor(temp_categ_enc, temp_cont_enc)[:, 0, :]
+
+                        if opt.extractor_type == 'mlp':
+                            temp_unified_shared_output = unified_shared_output.detach()
+                            old_shared_feature = old_shared_extractor(unified_shared_output)
+                        else:
+                            old_shared_feature = old_shared_extractor(temp_categ_enc, temp_cont_enc)[:,feat_idx,:]
+                    
+                    if opt.extractor_type == 'mlp':
+                        shared_feature = model.shared_extractor(temp_unified_shared_output)
+                    else:
+                        shared_feature =  model.shared_extractor(temp_categ_enc, temp_cont_enc)[:, feat_idx, :]
                     for temp_data_id in range(data_id):
                         old_y_outs = old_shared_classifier[temp_data_id](old_shared_feature)
                         y_outs = model.shared_classifier[temp_data_id](shared_feature)

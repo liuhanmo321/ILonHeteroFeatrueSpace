@@ -18,6 +18,9 @@ from models.ours_ewc import ours_ewc
 from models.muc import muc
 from models.pnn import pnn
 from models.muc_ewc import muc_ewc
+from models.pcl import pcl
+from models.afec import afec
+from models.dmc import dmc
 
 from prettytable import PrettyTable
 
@@ -60,6 +63,14 @@ parser.add_argument('--run_name', default='testrun', type=str)
 parser.add_argument('-set_seed', default= 1 , type=int)
 parser.add_argument('-dset_seed', default= 5 , type=int)
 parser.add_argument('-shuffle', action = 'store_true')
+parser.add_argument('-num_workers', default=4, type=int)
+
+parser.add_argument('-rand', default=1, type=int)
+parser.add_argument('-order', default=1, type=int)
+parser.add_argument('-ablation', action = 'store_true')
+parser.add_argument('-extractor_type', default='transformer', type=str)
+
+parser.add_argument('-repeat', default=4, type=int)
 
 parser.add_argument('-alpha', default=0.2, type=float)
 parser.add_argument('-beta', default=0.1, type=float)
@@ -76,18 +87,28 @@ parser.add_argument('-dtask', default='clf', type=str)
 
 parser.add_argument('-side_classifier', default=4, type=int)
 parser.add_argument('-discrepancy', default=1, type=int)
+# parser.add_argument('-grad_pen', default=1, type=float)
+# parser.add_argument('-l2_trans', default=1, type=float)
+
+parser.add_argument('-param_search', action = 'store_true')
 
 opt = parser.parse_args()
 
-seed_dict = {'aps': 1, 'bank': 1, 'blast_char': 3, 'income': 2, 'shoppers': 4, 'shrutime': 2, 'volkert': 3, 'mix': 1}
-# seed_dict = {'aps': 1, 'bank': 2, 'blast_char': 2, 'income': 3, 'shoppers': 3, 'shrutime': 3, 'volkert': 2, 'mix': 2}
-# seed_dict = {'aps': 1, 'bank': 3, 'blast_char': 1, 'income': 1, 'shoppers': 2, 'shrutime': 1, 'volkert': 1, 'mix': 3}
+if opt.rand == 1:
+    seed_dict = {'aps': 1, 'bank': 1, 'blast_char': 3, 'income': 2, 'shoppers': 4, 'shrutime': 2, 'volkert': 3, 'mix': 1}
+elif opt.rand == 2:
+    seed_dict = {'aps': 1, 'bank': 2, 'blast_char': 2, 'income': 3, 'shoppers': 3, 'shrutime': 3, 'volkert': 2, 'mix': 2}
+elif opt.rand == 3:
+    seed_dict = {'aps': 1, 'bank': 3, 'blast_char': 1, 'income': 1, 'shoppers': 2, 'shrutime': 1, 'volkert': 1, 'mix': 3}
 
 if opt.data_name == 'volkert' and opt.class_inc:
     opt.num_tasks = 5
 
 if opt.debug:
     opt.epochs = 1
+
+if opt.order != 1:
+    opt.shuffle == True
 
 if __name__ == '__main__':
 
@@ -111,180 +132,247 @@ if __name__ == '__main__':
     if 'joint' in opt.method:
         opt.lr_lower_bound = opt.lr / 10
 
-    # if opt.hyper_search:
-    #     opt.set_seed = seed_dict[opt.data_name]
-    #     opt.dset_seed = 6 - seed_dict[opt.data_name]
-        
-    #     opt.result_path = './results/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
-    #     os.makedirs('./results/' + opt.data_name + '/', exist_ok = True)
-
-    #     space = {
-    #             "T": hp.choice('T', [2]),
-    #             "alpha": hp.choice("alpha", [0.1, 0.2, 0.3, 0.4, 0.5]),
-    #             "dist_frac": hp.choice("dist_frac", [0.005, 0.1, 0.2, 0.5, 1, 2]),
-    #             "beta": hp.choice("beta", [0.1, 0.5, 1, 2, 5]),
-    #             "gamma": hp.choice("gamma", [5, 10, 15, 20, 25, 30])
-    #     }
-
-    #     if opt.method == 'joint' or opt.method == 'ord_joint':
-    #         space['lr'] = hp.choice("lr", [0.0001, 0.0005])
-        
-    #     if opt.method == 'lwf' or opt.method == 'muc_lwf' or opt.method == 'ours_lwf':
-    #         space['T'] = hp.choice("T", [0.5, 1, 2, 4])
-
-    #     def f(params):
-    #         torch.manual_seed(1)
-
-    #         if opt.method == 'joint' or opt.method == 'ord_joint':
-    #             opt.lr = params['lr']
-
-    #         opt.T = params['T']
-    #         opt.alpha = params['alpha']
-    #         opt.distill_frac = params['dist_frac']
-    #         opt.beta = params['beta']
-    #         opt.gamma = params['gamma']
-
-    #         acc_mean = 0
-    #         def run():
-    #             if opt.method == 'lwf':
-    #                 acc = baseline_shared_only(opt)
-    #             if opt.method == 'specific_only':
-    #                 acc = baseline_specific_only(opt)
-    #             if opt.method == 'ours_lwf':
-    #                 acc = ours(opt)
-    #             if opt.method == 'joint':
-    #                 acc = baseline_joint(opt)
-    #             if opt.method == 'finetune':
-    #                 acc = baseline_finetune(opt)
-    #             if opt.method == 'ord_joint':
-    #                 acc = baseline_ord_joint(opt)
-    #             if opt.method == 'acl':
-    #                 acc = baseline_acl(opt)           
-    #             if opt.method == 'ewc':
-    #                 acc = baseline_shared_only_ewc(opt)
-    #             if opt.method == 'ours_ewc':
-    #                 acc = ours_ewc(opt)
-    #             if opt.method == 'muc_ewc':
-    #                 acc = muc_ewc(opt)
-    #             if opt.method == 'muc_lwf':
-    #                 acc = muc(opt)
-    #             if opt.method == 'pnn':
-    #                 acc = pnn(opt) 
-    #             return acc
-
-    #         for _ in range(4):
-    #             acc_mean += run()
-    #         acc_mean = acc_mean / 4
-            
-    #         table = PrettyTable(['avg_acc', 'batch_size', 'T', 'dist_frac', 'alpha', 'beta', 'gamma'])
-    #         table.add_row(['%.4f' %acc_mean, opt.batchsize, opt.T, opt.distill_frac, opt.alpha, opt.beta, opt.gamma])
-    #         with open(opt.result_path, 'a+') as f:
-    #             f.write(table.get_string())
-    #             f.write('\n\n')
-    #         return {'loss': -acc_mean, 'status': STATUS_OK}
-            
-        
-    #     trials = Trials()
-    #     best = fmin(f, space, algo=tpe.suggest, max_evals=25, trials=trials)
-        
-    #     print('best performance:', best) 
-    # else:
-    if opt.data_name == None:
-        data_list = ['bank', 'blast_char', 'income', 'shoppers', 'shrutime']
-        for name in data_list:
-            torch.manual_seed(1)
-            opt.data_name = name
-            opt.set_seed = seed_dict[opt.data_name]
-            opt.dset_seed = 6 - seed_dict[opt.data_name]
-
-            opt.result_path = './results_avg_loss/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
-            os.makedirs('./results_avg_loss/' + opt.data_name + '/', exist_ok = True) 
-            for i in range(4):
-            # opt.set_seed = i + 1
-            # opt.dset_seed = 5 - i
-                if opt.method == 'lwf':
-                    baseline_shared_only(opt)
-                if opt.method == 'specific_only':
-                    baseline_specific_only(opt)
-                if opt.method == 'ours_lwf':
-                    ours(opt)
-                if opt.method == 'ord_joint':
-                    baseline_ord_joint(opt)
-                if opt.method == 'joint':
-                    baseline_joint(opt)
-                if opt.method == 'finetune':
-                    baseline_finetune(opt)
-                if opt.method == 'acl':
-                    baseline_acl(opt)
-                if opt.method == 'ewc':
-                    baseline_shared_only_ewc(opt)
-                if opt.method == 'ours_ewc':
-                    ours_ewc(opt)
-                if opt.method == 'muc_lwf':
-                    muc(opt)
-                if opt.method == 'pnn':
-                    pnn(opt)
-                if opt.method == 'muc_ewc':
-                    muc_ewc(opt)
-
-    else:
+    if opt.param_search and opt.hyper_search:
         opt.set_seed = seed_dict[opt.data_name]
         opt.dset_seed = 6 - seed_dict[opt.data_name]
-        opt.result_path = './results/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
-        os.makedirs('./results/' + opt.data_name + '/', exist_ok = True)
-
-        table = PrettyTable(['shuffle', 'set_seed', 'dset_seed'])
-        table.add_row([opt.shuffle, '%d' %opt.set_seed, '%d' %opt.dset_seed])
-
-        with open(opt.result_path, 'a+') as file:
-            file.write(table.get_string())
-            file.write('\n')
-            file.close()
-
-        times = 3
-        # if opt.debug:
-        #     times = 1
         
-        if not opt.hyper_search:
-            for i in range(times): 
-                if opt.method == 'lwf':
-                    baseline_shared_only(opt)
-                if opt.method == 'specific_only':
-                    baseline_specific_only(opt)
-                if opt.method == 'ours_lwf':
-                    ours(opt)
-                if opt.method == 'ord_joint':
-                    baseline_ord_joint(opt)
-                if opt.method == 'joint':
-                    baseline_joint(opt)
-                if opt.method == 'finetune':
-                    baseline_finetune(opt)
-                if opt.method == 'acl':
-                    baseline_acl(opt)
-                if opt.method == 'ewc':
-                    baseline_shared_only_ewc(opt)
-                if opt.method == 'ours_ewc':
-                    ours_ewc(opt)
-                if opt.method == 'muc_lwf':
-                    muc(opt)
-                if opt.method == 'pnn':
-                    pnn(opt)
-                if opt.method == 'muc_ewc':
-                    muc_ewc(opt)         
+        opt.result_path = './results_hs/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
+        os.makedirs('./results_hs/' + opt.data_name + '/', exist_ok = True)
+
+        if opt.method == 'pcl':
+            space = {
+                "alpha": hp.choice("alpha", [0.01, 0.1, 1, 10, 100]),
+                "beta": hp.choice("beta", [0.01, 0.1, 1, 10, 100])
+            }
+        elif opt.method == 'afec':
+            space = {
+                "alpha": hp.choice("alpha", [0.01, 0.1, 1, 10, 100]),
+                "distill_frac": hp.choice("distill_frac", [0.1, 0.5, 1, 2])
+            }            
         else:
-            acc_list = []
-            for i in range(times):
+            space = {
+                    "T": hp.choice('T', [2]),
+                    "alpha": hp.choice("alpha", [0.1, 0.2, 0.3, 0.4, 0.5]),
+                    "dist_frac": hp.choice("dist_frac", [0.005, 0.1, 0.2, 0.5, 1, 2]),
+                    "beta": hp.choice("beta", [0.1, 0.5, 1, 2, 5]),
+                    "gamma": hp.choice("gamma", [5, 10, 15, 20, 25, 30])
+            }
+
+        if opt.method == 'joint' or opt.method == 'ord_joint':
+            space['lr'] = hp.choice("lr", [0.0001, 0.0005])
+        
+        if opt.method == 'lwf' or opt.method == 'muc_lwf' or opt.method == 'ours_lwf':
+            space['T'] = hp.choice("T", [0.5, 1, 2, 4])
+
+        def f(params):
+            torch.manual_seed(1)
+
+            if opt.method == 'joint' or opt.method == 'ord_joint':
+                opt.lr = params['lr']
+
+            if opt.method == 'pcl':
+                opt.alpha = params['alpha']
+                opt.beta = params['beta']
+            elif opt.method == 'afec':
+                opt.distill_frac = params['distill_frac']
+                opt.alpha = params['alpha']
+            else:
+                opt.T = params['T']
+                opt.alpha = params['alpha']
+                opt.distill_frac = params['dist_frac']
+                opt.beta = params['beta']
+                opt.gamma = params['gamma']
+
+            acc_mean = 0
+            def run():
+                if opt.method == 'lwf':
+                    acc = baseline_shared_only(opt)
+                if opt.method == 'specific_only':
+                    acc = baseline_specific_only(opt)
                 if opt.method == 'ours_lwf':
                     acc = ours(opt)
+                if opt.method == 'joint':
+                    acc = baseline_joint(opt)
+                if opt.method == 'finetune':
+                    acc = baseline_finetune(opt)
+                if opt.method == 'ord_joint':
+                    acc = baseline_ord_joint(opt)
+                if opt.method == 'acl':
+                    acc = baseline_acl(opt)           
+                if opt.method == 'ewc':
+                    acc = baseline_shared_only_ewc(opt)
                 if opt.method == 'ours_ewc':
                     acc = ours_ewc(opt)
-                acc_list.append(acc)
-            avg_acc = np.mean(acc_list)
-            std = np.std(acc_list)
+                if opt.method == 'muc_ewc':
+                    acc = muc_ewc(opt)
+                if opt.method == 'muc_lwf':
+                    acc = muc(opt)
+                if opt.method == 'pnn':
+                    acc = pnn(opt)
+                if opt.method == 'pcl':
+                    acc = pcl(opt)
+                if opt.method == 'afec':
+                    acc = afec(opt)
+                return acc
 
-            table = PrettyTable(['avg_acc', 'std', 'T', 'dist_frac', 'alpha', 'beta', 'gamma'])
-            table.add_row(['%.4f' %avg_acc, '%.7f' %std, opt.T, opt.distill_frac, opt.alpha, opt.beta, opt.gamma])
+            for _ in range(4):
+                acc_mean += run()
+            acc_mean = acc_mean / 4
+            
+            table = PrettyTable(['avg_acc', 'batch_size', 'T', 'dist_frac', 'alpha', 'beta', 'gamma'])
+            table.add_row(['%.4f' %acc_mean, opt.batchsize, opt.T, opt.distill_frac, opt.alpha, opt.beta, opt.gamma])
             with open(opt.result_path, 'a+') as f:
                 f.write(table.get_string())
                 f.write('\n\n')
+            return {'loss': -acc_mean, 'status': STATUS_OK}
             
+        
+        trials = Trials()
+        best = fmin(f, space, algo=tpe.suggest, max_evals=25, trials=trials)
+        
+        print('best performance:', best) 
+    else:
+        if opt.data_name == None:
+            data_list = ['bank', 'blast_char', 'income', 'shoppers', 'shrutime']
+            for name in data_list:
+                torch.manual_seed(1)
+                opt.data_name = name
+                if opt.rand <= 3:
+                    opt.set_seed = seed_dict[opt.data_name]
+                    opt.dset_seed = 6 - seed_dict[opt.data_name]
+                else:
+                    opt.set_seed = opt.rand
+                    opt.dset_seed = opt.rand
+
+                opt.result_path = './results_avg_loss/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
+                os.makedirs('./results_avg_loss/' + opt.data_name + '/', exist_ok = True) 
+                for i in range(4):
+                # opt.set_seed = i + 1
+                # opt.dset_seed = 5 - i
+                    if opt.method == 'lwf':
+                        baseline_shared_only(opt)
+                    if opt.method == 'specific_only':
+                        baseline_specific_only(opt)
+                    if opt.method == 'ours_lwf':
+                        ours(opt)
+                    if opt.method == 'ord_joint':
+                        baseline_ord_joint(opt)
+                    if opt.method == 'joint':
+                        baseline_joint(opt)
+                    if opt.method == 'finetune':
+                        baseline_finetune(opt)
+                    if opt.method == 'acl':
+                        baseline_acl(opt)
+                    if opt.method == 'ewc':
+                        baseline_shared_only_ewc(opt)
+                    if opt.method == 'ours_ewc':
+                        ours_ewc(opt)
+                    if opt.method == 'muc_lwf':
+                        muc(opt)
+                    if opt.method == 'pnn':
+                        pnn(opt)
+                    if opt.method == 'muc_ewc':
+                        muc_ewc(opt)
+
+        else:
+            if opt.rand <= 3:
+                opt.set_seed = seed_dict[opt.data_name]
+                opt.dset_seed = 6 - seed_dict[opt.data_name]
+            else:
+                opt.set_seed = opt.rand
+                opt.dset_seed = opt.rand
+            
+            if opt.ablation:
+                opt.result_path = './ab_results/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
+                os.makedirs('./ab_results/' + opt.data_name + '/', exist_ok = True)            
+            else:
+                if opt.extractor_type == 'transformer':
+                    opt.result_path = './rev_results/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
+                    os.makedirs('./rev_results/' + opt.data_name + '/', exist_ok = True)
+                else:
+                    opt.result_path = './rev_results_ext/' + opt.data_name + '/' + '_'.join(saving_list + [opt.extractor_type]) + '.csv'
+                    os.makedirs('./rev_results_ext/' + opt.data_name + '/', exist_ok = True)
+                # os.makedirs('./rev_results/' + opt.data_name + '/', exist_ok = True)
+
+            table = PrettyTable(['shuffle', 'set_seed', 'dset_seed'])
+            table.add_row([opt.shuffle, '%d' %opt.set_seed, '%d' %opt.dset_seed])
+
+            with open(opt.result_path, 'a+') as file:
+                file.write(table.get_string())
+                file.write('\n')
+                file.close()
+
+            times = opt.repeat
+            # if opt.debug:
+            #     times = 1
+            
+            if not opt.hyper_search:
+                for i in range(times): 
+                    if opt.method == 'lwf':
+                        baseline_shared_only(opt)
+                    if opt.method == 'specific_only':
+                        baseline_specific_only(opt)
+                    if opt.method == 'ours_lwf':
+                        ours(opt)
+                    if opt.method == 'ord_joint':
+                        baseline_ord_joint(opt)
+                    if opt.method == 'joint':
+                        baseline_joint(opt)
+                    if opt.method == 'finetune':
+                        baseline_finetune(opt)
+                    if opt.method == 'acl':
+                        baseline_acl(opt)
+                    if opt.method == 'ewc':
+                        baseline_shared_only_ewc(opt)
+                    if opt.method == 'ours_ewc':
+                        ours_ewc(opt)
+                    if opt.method == 'muc_lwf':
+                        muc(opt)
+                    if opt.method == 'pnn':
+                        pnn(opt)
+                    if opt.method == 'muc_ewc':
+                        muc_ewc(opt)         
+            else:
+                acc_list = []
+                for i in range(times):
+                    if opt.method == 'lwf':
+                        acc = baseline_shared_only(opt)
+                    if opt.method == 'specific_only':
+                        acc = baseline_specific_only(opt)
+                    if opt.method == 'ours_lwf':
+                        acc = ours(opt)
+                    if opt.method == 'ord_joint':
+                        acc = baseline_ord_joint(opt)
+                    if opt.method == 'joint':
+                        acc = baseline_joint(opt)
+                    if opt.method == 'finetune':
+                        acc = baseline_finetune(opt)
+                    if opt.method == 'acl':
+                        acc = baseline_acl(opt)
+                    if opt.method == 'ewc':
+                        acc = baseline_shared_only_ewc(opt)
+                    if opt.method == 'ours_ewc':
+                        acc = ours_ewc(opt)
+                    if opt.method == 'muc_lwf':
+                        acc = muc(opt)
+                    if opt.method == 'pnn':
+                        acc = pnn(opt)
+                    if opt.method == 'muc_ewc':
+                        acc = muc_ewc(opt) 
+                    if opt.method == 'pcl':
+                        acc = pcl(opt)
+                    if opt.method == 'afec':
+                        acc = afec(opt)
+                    if opt.method == 'dmc':
+                        acc = dmc(opt)
+    
+                    acc_list.append(acc)
+                avg_acc = np.mean(acc_list)
+                std = np.std(acc_list)
+
+                table = PrettyTable(['avg_acc', 'std', 'T', 'dist_frac', 'alpha', 'beta', 'gamma'])
+                table.add_row(['%.4f' %avg_acc, '%.7f' %std, opt.T, opt.distill_frac, opt.alpha, opt.beta, opt.gamma])
+                with open(opt.result_path, 'a+') as f:
+                    f.write(table.get_string())
+                    f.write('\n\n')
+                

@@ -46,7 +46,7 @@ def baseline_shared_only(opt):
     # Model Related
 
     ce = nn.CrossEntropyLoss().to(device)
-
+    feat_idx = 0 if opt.extractor_type == 'transformer' else -1
     result_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
     total_time = 0
 
@@ -62,7 +62,8 @@ def baseline_shared_only(opt):
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
                 y_dim = y_dims[0],
-                condition = 'shared_only'
+                condition = 'shared_only',
+                extractor_type = opt.extractor_type
             )
         else:
             model.cpu()
@@ -96,16 +97,25 @@ def baseline_shared_only(opt):
                 optimizer.zero_grad()
                 x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
 
-                _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
-                shared_output = model.shared_extractor(x_categ_enc, x_cont_enc)
-                shared_feature = shared_output[:,0,:]
-                
+                _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)
+                if opt.extractor_type == 'mlp':
+                    shared_unified_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                    shared_feature = model.shared_extractor(shared_unified_output)
+                else:
+                    shared_output = model.shared_extractor(x_categ_enc, x_cont_enc)
+                    # print(shared_output.shape)
+                    # shared_feature = shared_output[:,0,:]
+                    shared_feature = shared_output[:,feat_idx,:]
+
                 y_outs = model.shared_classifier[data_id](shared_feature)
                 loss = ce(y_outs,y_gts.squeeze())
                 
                 if not opt.no_distill:
                     with torch.no_grad():
-                        old_shared_feature = old_shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+                        if opt.extractor_type == 'mlp':
+                            old_shared_feature = old_shared_extractor(shared_unified_output)
+                        else:
+                            old_shared_feature = old_shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
                         old_temp_outs = [old_shared_classifier[temp_data_id](old_shared_feature) for temp_data_id in range(data_id)]
                     
                     for temp_data_id in range(data_id):
@@ -153,18 +163,20 @@ def baseline_shared_only(opt):
     print(table)
     print('===========================================================================')
 
+    # if opt.hyper_search:
+    #     return  np.mean(result_matrix[:, -1])
+    # else:
+    with open(save_path, 'a+') as f:
+        f.write(table.get_string())
+        f.write('\n')
+        f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
+        f.write(str(result_matrix))
+        f.write('\n')
+        f.write('====================================================================\n\n')
+        f.close()
+    
     if opt.hyper_search:
         return  np.mean(result_matrix[:, -1])
-    else:
-        with open(save_path, 'a+') as f:
-            f.write(table.get_string())
-            f.write('\n')
-            f.write('the accuracy matrix is: \nrows for different tasks and columns for accuracy after increment' + '\n')
-            f.write(str(result_matrix))
-            f.write('\n')
-            f.write('====================================================================\n\n')
-            f.close()
-
 
 def baseline_specific_only(opt):
     # if opt.shrink:
@@ -190,6 +202,7 @@ def baseline_specific_only(opt):
     nll = nn.NLLLoss().to(device)
 
     result_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
+    feat_idx = 0 if opt.extractor_type == 'transformer' else -1
     dis_score_list = []
     total_time = 0
 
@@ -205,7 +218,8 @@ def baseline_specific_only(opt):
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
                 y_dim = y_dims[0],
-                condition = 'specific_only'
+                condition = 'specific_only',
+                extractor_type = opt.extractor_type
             )
         else:
             model.cpu()
@@ -236,7 +250,7 @@ def baseline_specific_only(opt):
 
                 _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
                 specific_output = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)
-                specific_feature = specific_output[:,0,:]
+                specific_feature = specific_output[:,feat_idx,:]
                 
                 y_outs = model.specific_classifier[data_id](specific_feature)
                 loss = ce(y_outs,y_gts.squeeze())
@@ -244,7 +258,7 @@ def baseline_specific_only(opt):
 
                 if data_id > 0:
                     with torch.no_grad():
-                        specific_features = [model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,0,:] for temp_id in range(data_id + 1)]
+                        specific_features = [model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,feat_idx,:] for temp_id in range(data_id + 1)]
                         specific_outputs = [model.specific_classifier[data_id](specific_features[temp_id]) for temp_id in range(data_id +1)]
                         specific_p = [torch.softmax(output, dim=1) for output in specific_outputs]
                         label_p = [-nn.NLLLoss(reduction='none')(p, y_gts.squeeze()) for p in specific_p]

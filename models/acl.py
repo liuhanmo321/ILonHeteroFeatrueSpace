@@ -54,15 +54,15 @@ def baseline_acl(opt):
                 categories = tuple(cat_dims_group[0]), 
                 num_continuous = len(con_idxs_group[0]),                
                 dim = opt.embedding_size,                           
-                dim_out = 1,                       
+                # dim_out = 1,                       
                 depth = opt.transformer_depth,                       
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
-                mlp_hidden_mults = (4, 2),       
-                cont_embeddings = opt.cont_embeddings,
-                attentiontype = opt.attentiontype,
-                final_mlp_style = opt.final_mlp_style,
+                # mlp_hidden_mults = (4, 2),       
+                # cont_embeddings = opt.cont_embeddings,
+                # attentiontype = opt.attentiontype,
+                # final_mlp_style = opt.final_mlp_style,
                 y_dim = y_dims[0]
             )
         else:

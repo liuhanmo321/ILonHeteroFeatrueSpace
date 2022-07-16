@@ -1,4 +1,7 @@
 from .model import *
+import copy
+
+celossmean = nn.CrossEntropyLoss(reduction='mean')
 
 class SAINT(nn.Module):
     def __init__(
@@ -13,7 +16,6 @@ class SAINT(nn.Module):
         attn_dropout = 0.,
         ff_dropout = 0.,
         y_dim = 2,
-        num_side_classifier = 3,
         extractor_type = 'transformer'
         ):
         super().__init__()
@@ -22,7 +24,6 @@ class SAINT(nn.Module):
         # create category embeddings table
 
         total_tokens = sum(categories)
-        num_categorical = len(categories)
 
         # for automatically offsetting unique category ids to the correct position in the categories embedding table
 
@@ -45,15 +46,11 @@ class SAINT(nn.Module):
         self.dim_head = dim_head
         self.attn_dropout = attn_dropout
         self.ff_dropout = ff_dropout
-
+        self.extractor_type = extractor_type
         # structure parameters
 
         self.hidden_dims = 128
         self.embed_dim = 32
-        self.num_side_classifier = num_side_classifier
-        self.extractor_type = extractor_type
-
-        # start modifying embeddings
 
         self.embeds = nn.ModuleList([nn.Embedding(total_tokens, self.dim)])
         self.simple_MLP = nn.ModuleList(
@@ -62,16 +59,8 @@ class SAINT(nn.Module):
                 )]
             )
         
-        self.unlabeled_embeds = nn.ModuleList([])
-        self.unlabeled_simple_MLP = nn.ModuleList([])
-        
-        # end modifying embeddings
-
         # start modification
-        if extractor_type == 'mlp':
-            self.shared_unifier = nn.ModuleList([UnifierModel(num_categorical, num_continuous, dim, attn_dropout)])
-            self.unlabeled_shared_unifier = nn.ModuleList([])
-            # self.specific_unifier = nn.ModuleList([UnifierModel(num_categorical, num_continuous, dim, attn_dropout)])
+
         if extractor_type == 'transformer':
             self.shared_extractor = Transformer(
                     dim = dim,
@@ -99,34 +88,25 @@ class SAINT(nn.Module):
                     attn_dropout = attn_dropout,
                     ff_dropout = ff_dropout
                 )  
-        elif extractor_type == 'mlp':
-            self.shared_extractor = MLPModel(dim, int(self.depth / 2), attn_dropout)
-    
-        self.shared_classifier = nn.ModuleList([simple_MLP([dim, int(self.hidden_dims / 2), y_dim])])
-        self.side_classifier = nn.ModuleList(
+
+        # self.task_classifier = nn.ModuleList([simple_MLP([dim, int(self.hidden_dims / 2), y_dim])])
+        
+        self.class_classifier = nn.ModuleList(
             [nn.ModuleList(
-                [simple_MLP([dim, int(self.hidden_dims / 2), y_dim]) for _ in range(self.num_side_classifier)]
+                [simple_MLP([dim, int(self.hidden_dims / 2), 1]) for _ in range(y_dim)]
             )]
         )
 
         # end modification        
-        
-    def forward(self, x_categ, x_cont):        
-        x = self.shared_extractor(x_categ, x_cont)
-        return x
 
     def add_task(self, categories, num_continuous, y_dim):
-        num_categorical = len(categories)        
         total_tokens = sum(categories)
         self.num_continuous.append(num_continuous)
 
         temp_categories_offset = F.pad(torch.tensor(list(categories)), (1, 0), value = 0)
         temp_categories_offset = temp_categories_offset.cumsum(dim = -1)[:-1]
         self.categories_offset.append(temp_categories_offset)
-        
-        if self.extractor_type == 'mlp':
-            self.shared_unifier.append(UnifierModel(num_categorical, num_continuous, self.dim, self.attn_dropout))
-        
+
         print('categorical_offset', self.categories_offset)
 
         self.embeds.append(nn.Embedding(total_tokens, self.dim))
@@ -134,26 +114,23 @@ class SAINT(nn.Module):
             nn.ModuleList([simple_MLP([1,self.embed_dim,self.dim]) for _ in range(num_continuous)])
         )
         
-        self.shared_classifier.append(simple_MLP([self.dim, int(self.hidden_dims / 2), y_dim]))
-        self.side_classifier.append(
-            nn.ModuleList([simple_MLP([self.dim, int(self.hidden_dims / 2), y_dim]) for _ in range(self.num_side_classifier)])
+        # self.task_classifier.append(simple_MLP([self.dim, int(self.hidden_dims / 2), y_dim]))
+        self.class_classifier.append(
+            nn.ModuleList(
+                [simple_MLP([self.dim, int(self.hidden_dims / 2), 1]) for _ in range(y_dim)]
+            )
         )
     
-    def add_unlabeled_task(self, categories, num_continuous, y_dim):
-        total_tokens = sum(categories)
-        self.unlabeled_num_continuous.append(num_continuous)
-        num_categorical = len(categories)
-
-        temp_categories_offset = F.pad(torch.tensor(list(categories)), (1, 0), value = 0)
-        temp_categories_offset = temp_categories_offset.cumsum(dim = -1)[:-1]
-        self.unlabeled_categories_offset.append(temp_categories_offset)
-
-        if self.extractor_type == 'mlp':
-            self.unlabeled_shared_unifier.append(UnifierModel(num_categorical, num_continuous, self.dim, self.attn_dropout))
-
-        print('categorical_offset', self.unlabeled_categories_offset)
-
-        self.unlabeled_embeds.append(nn.Embedding(total_tokens, self.dim))
-        self.unlabeled_simple_MLP.append(
-            nn.ModuleList([simple_MLP([1,self.embed_dim,self.dim]) for _ in range(num_continuous)])
-        )
+    def set_parameters(self, data_id, cls, avg_model):
+        self.class_classifier[data_id][cls].layers[0].weight.data = avg_model.weight1.clone().detach()
+        self.class_classifier[data_id][cls].layers[2].weight.data = avg_model.weight2.clone().detach()
+    
+    def get_model_list(self, cls):
+        model_list = []
+        for temp_id in range(len(self.class_classifier) - 1):
+            model_list.append(self.class_classifier[temp_id][0])
+            model_list.append(self.class_classifier[temp_id][1])
+        for temp_cls in range(cls + 1):
+            model_list.append(self.class_classifier[-1][temp_cls])
+        
+        return model_list

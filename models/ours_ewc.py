@@ -25,12 +25,17 @@ def fisher_matrix_diag(data_id, dataloader, model, old_model, fisher, device):
         temp_fisher[n]=0*p.data
     # Compute
     model.train()
+    feat_idx = 0 if model.extractor_type == 'transformer' else -1
     for i, data in enumerate(dataloader, 0):
         x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
         # print(x_categ.shape)
         _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id) 
         model.zero_grad()
-        shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+        if model.extractor_type == 'mlp':
+            unified_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+            shared_feature = model.shared_extractor(unified_output)
+        else:
+            shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
         shared_output = model.shared_classifier[data_id](shared_feature)
         loss = nn.CrossEntropyLoss().to(device)(shared_output, y_gts.squeeze())
         if data_id > 0:
@@ -73,6 +78,8 @@ def ours_ewc(opt):
     shared_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
     specific_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
 
+    feat_idx = 0 if opt.extractor_type == 'transformer' else -1
+
     total_time = 0
     fisher = {}
 
@@ -87,7 +94,8 @@ def ours_ewc(opt):
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,
-                y_dim = y_dims[0]
+                y_dim = y_dims[0],
+                extractor_type = opt.extractor_type
             )
             old_model = None
         else:
@@ -119,9 +127,17 @@ def ours_ewc(opt):
 
                 x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
                 _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)           
-                    
-                specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,0,:]
-                shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+
+                if opt.extractor_type == 'mlp':
+                    unified_shared_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                    shared_feature = model.shared_extractor(unified_shared_output)
+                    unified_specific_output = model.specific_unifier[data_id](x_categ_enc, x_cont_enc)
+                    specific_feature = model.specific_extractor[data_id](unified_specific_output)
+                else:
+                    specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,feat_idx,:]
+                    shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]                    
+                # specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,feat_idx,:]
+                # shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
                 specific_output = model.specific_classifier[data_id](specific_feature)                
                 shared_output = model.shared_classifier[data_id](shared_feature)
                 
@@ -130,7 +146,11 @@ def ours_ewc(opt):
 
                 if data_id > 0 and not opt.no_discrim:
                     with torch.no_grad():
-                        specific_features = [model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,0,:] for temp_id in range(data_id + 1)]
+                        if opt.extractor_type == 'mlp':
+                            specific_features = [model.specific_extractor[temp_id](unified_specific_output) for temp_id in range(data_id + 1)]
+                        else:
+                            specific_features = [model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,feat_idx,:] for temp_id in range(data_id + 1)]                        
+                        # specific_features = [model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,feat_idx,:] for temp_id in range(data_id + 1)]
                         specific_outputs = [model.specific_classifier[data_id](specific_features[temp_id]) for temp_id in range(data_id +1)]
                         specific_p = [torch.softmax(output, dim=1) for output in specific_outputs]
                         label_p = [-nn.NLLLoss(reduction='none')(p, y_gts.squeeze()) for p in specific_p]
@@ -243,11 +263,13 @@ def ours_ewc(opt):
         f.write('\n')
         f.write('====================================================================\n\n')
         f.close()       
-    if opt.hyper_search:
-        return  np.mean(result_matrix[:, -1])
+
     
     if opt.save_model:
-        save_path = f'checkpoints/{opt.method}'
-        os.makedirs(save_path, exist_ok=True)
-        model_path = os.path.join(save_path, f'{opt.method}.pth')
+        model_save_path = f'checkpoints/{opt.data_name}'
+        os.makedirs(model_save_path, exist_ok=True)
+        model_path = os.path.join(model_save_path, f'{opt.method}.pth')
         torch.save(model, model_path)
+
+    if opt.hyper_search:
+        return  np.mean(result_matrix[:, -1])

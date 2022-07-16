@@ -4,6 +4,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import random
 from random import shuffle
+import copy
 
 categorical_names = {
     'shoppers': ['OperatingSystems', 'Browser', 'Region', 'TrafficType', 'Weekend'],
@@ -157,13 +158,14 @@ class DataSetCatCon(Dataset):
         return np.concatenate((self.cls[idx], self.X1[idx])), self.X2[idx],self.y[idx]
 
 # def sub_data_prep(data_name, seed, task, datasplit=[.65, .15, .2], num_tasks=3, class_inc=False, length=None, rearrange=False):
-def sub_data_prep(opt, datasplit=[.65, .15, .2], length=None):
+def sub_data_prep(opt, datasplit=[.65, .15, .2], length=None, single_class=False):
     data_name = opt.data_name
     seed = opt.dset_seed
     task = opt.dtask
     num_tasks = opt.num_tasks
     class_inc = opt.class_inc
     rearrange = opt.shuffle
+    num_workers = opt.num_workers
 
     np.random.seed(seed)
     random.seed(seed)
@@ -185,16 +187,45 @@ def sub_data_prep(opt, datasplit=[.65, .15, .2], length=None):
             cat_dims_group.append(cat_dims)
             con_idxs_group.append(con_idxs)
 
-            train_ds = DataSetCatCon(X_train, y_train, cat_idxs, continuous_mean_std)
-            trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=4))
+            if not single_class:
+                train_ds = DataSetCatCon(X_train, y_train, cat_idxs, continuous_mean_std)
+                trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=num_workers))
 
-            valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
-            validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=4))
+                valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
+                validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=num_workers))
 
-            test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
-            testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
+                test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
+                testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=num_workers))
 
-            y_dims.append(len(np.unique(y_train['data'][:,0])))
+                y_dims.append(len(np.unique(y_train['data'][:,0])))
+            else:
+                temp_trainloaders, temp_validloaders, temp_testloaders = [], [], []
+                for cls in range(len(np.unique(y_train['data'][:,0]))):
+                    mask = np.isin(y_train['data'][:, 0], cls)
+                    X_temp = {'data': copy.deepcopy(X_train['data'][mask])}
+                    y_temp = {'data': copy.deepcopy(y_train['data'][mask])}
+                    train_ds = DataSetCatCon(X_temp, y_temp, cat_idxs, continuous_mean_std)
+                    temp_trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=num_workers))
+
+                for cls in range(len(np.unique(y_train['data'][:,0]))):
+                    mask = np.isin(y_valid['data'][:, 0], cls)
+                    X_temp = {'data': copy.deepcopy(X_valid['data'][mask])}
+                    y_temp = {'data': copy.deepcopy(y_valid['data'][mask])}
+                    valid_ds = DataSetCatCon(X_temp, y_temp, cat_idxs, continuous_mean_std)
+                    temp_validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=True,num_workers=num_workers))
+
+                for cls in range(len(np.unique(y_train['data'][:,0]))):
+                    mask = np.isin(y_test['data'][:, 0], cls)
+                    X_temp = {'data': copy.deepcopy(X_test['data'][mask])}
+                    y_temp = {'data': copy.deepcopy(y_test['data'][mask])}
+                    test_ds = DataSetCatCon(X_temp, y_temp, cat_idxs, continuous_mean_std)
+                    temp_testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=True,num_workers=num_workers))
+
+                y_dims.append(len(np.unique(y_train['data'][:,0])))
+
+                trainloaders.append(temp_trainloaders)
+                validloaders.append(temp_validloaders)
+                testloaders.append(temp_testloaders)
 
     else:
         if data_name == 'volkert':
@@ -214,20 +245,69 @@ def sub_data_prep(opt, datasplit=[.65, .15, .2], length=None):
                 cat_dims_group.append(cat_dims)
                 con_idxs_group.append(con_idxs)
 
-                train_ds = DataSetCatCon(X_train, y_train, cat_idxs,continuous_mean_std)
-                trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=4))
+                # train_ds = DataSetCatCon(X_train, y_train, cat_idxs,continuous_mean_std)
+                # trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=4))
 
-                valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
-                validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=4))
+                # valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
+                # validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=4))
 
-                test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
-                testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
+                # test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
+                # testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=4))
 
-                y_dims.append(len(np.unique(y_train['data'][:,0])))
-    
-    if rearrange:
-        order = [1, 2, 0]
-        # order = [2, 1, 0]
+                # y_dims.append(len(np.unique(y_train['data'][:,0])))
+
+                if not single_class:
+                    train_ds = DataSetCatCon(X_train, y_train, cat_idxs, continuous_mean_std)
+                    trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=num_workers))
+
+                    valid_ds = DataSetCatCon(X_valid, y_valid, cat_idxs, continuous_mean_std)
+                    validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=False,num_workers=num_workers))
+
+                    test_ds = DataSetCatCon(X_test, y_test, cat_idxs, continuous_mean_std)
+                    testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=False,num_workers=num_workers))
+
+                    y_dims.append(len(np.unique(y_train['data'][:,0])))
+                else:
+                    temp_trainloaders, temp_validloaders, temp_testloaders = [], [], []
+                    for cls in range(len(np.unique(y_train['data'][:,0]))):
+                        mask = np.isin(y_train['data'][:, 0], cls)
+                        X_temp = {'data': copy.deepcopy(X_train['data'][mask])}
+                        y_temp = {'data': copy.deepcopy(y_train['data'][mask])}
+                        train_ds = DataSetCatCon(X_temp, y_temp, cat_idxs, continuous_mean_std)
+                        temp_trainloaders.append(DataLoader(train_ds, batch_size=256, shuffle=True,num_workers=num_workers))
+
+                    for cls in range(len(np.unique(y_train['data'][:,0]))):
+                        mask = np.isin(y_valid['data'][:, 0], cls)
+                        X_temp = {'data': copy.deepcopy(X_valid['data'][mask])}
+                        y_temp = {'data': copy.deepcopy(y_valid['data'][mask])}
+                        valid_ds = DataSetCatCon(X_temp, y_temp, cat_idxs, continuous_mean_std)
+                        temp_validloaders.append(DataLoader(valid_ds, batch_size=256, shuffle=True,num_workers=num_workers))
+
+                    for cls in range(len(np.unique(y_train['data'][:,0]))):
+                        mask = np.isin(y_test['data'][:, 0], cls)
+                        X_temp = {'data': copy.deepcopy(X_test['data'][mask])}
+                        y_temp = {'data': copy.deepcopy(y_test['data'][mask])}
+                        test_ds = DataSetCatCon(X_temp, y_temp, cat_idxs, continuous_mean_std)
+                        temp_testloaders.append(DataLoader(test_ds, batch_size=256, shuffle=True,num_workers=num_workers))
+
+                    y_dims.append(len(np.unique(y_train['data'][:,0])))
+
+                    trainloaders.append(temp_trainloaders)
+                    validloaders.append(temp_validloaders)
+                    testloaders.append(temp_testloaders)
+
+    if opt.order != 1:
+        # if data_name == 'volkert' or data_name == 'aps':
+        if num_tasks == 5:
+            if opt.order == 2:
+                order = [1, 3, 2, 4, 0]
+            if opt.order == 3:
+                order = [3, 1, 0, 2, 4]       
+        else:
+            if opt.order == 2:
+                order = [1, 2, 0]
+            if opt.order == 3:
+                order = [2, 1, 0]
         cat_dims_group = [cat_dims_group[i] for i in order]
         con_idxs_group = [con_idxs_group[i] for i in order]
         trainloaders = [trainloaders[i] for i in order]

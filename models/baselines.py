@@ -64,7 +64,8 @@ def baseline_finetune(opt):
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
-                y_dim = y_dims[0]
+                y_dim = y_dims[0],
+                extractor_type = opt.extractor_type
             )
         else:
             model.cpu()
@@ -192,6 +193,7 @@ def baseline_joint(opt):
     specific_matrix = np.zeros((opt.num_tasks, opt.num_tasks))
 
     total_time = 0
+    feat_idx = 0 if opt.extractor_type == 'transformer' else -1
 
     for data_id in range(opt.num_tasks):
 
@@ -204,7 +206,8 @@ def baseline_joint(opt):
                 heads = opt.attention_heads,                         
                 attn_dropout = opt.attention_dropout,             
                 ff_dropout = opt.ff_dropout,                  
-                y_dim = y_dims[0]
+                y_dim = y_dims[0],
+                extractor_type = opt.extractor_type
             )
         else:
             model.cpu()
@@ -232,13 +235,21 @@ def baseline_joint(opt):
 
                 _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, data_id)
 
-                shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
+                if opt.extractor_type == 'mlp':
+                    unified_shared_output = model.shared_unifier[data_id](x_categ_enc, x_cont_enc)
+                    shared_feature = model.shared_extractor(unified_shared_output)
+                else:
+                    shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
                 shared_output = model.shared_classifier[data_id](shared_feature)
-                shared_p = torch.softmax(shared_output, dim=1)
+                # shared_p = torch.softmax(shared_output, dim=1)
 
-                specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,0,:]
+                if opt.extractor_type == 'mlp':
+                    unified_specific_output = model.specific_unifier[data_id](x_categ_enc, x_cont_enc)
+                    specific_feature = model.specific_extractor[data_id](unified_specific_output)
+                else:                   
+                    specific_feature = model.specific_extractor[data_id](x_categ_enc, x_cont_enc)[:,feat_idx,:]
                 specific_output = model.specific_classifier[data_id](specific_feature)
-                specific_p = torch.softmax(specific_output, dim=1)
+                # specific_p = torch.softmax(specific_output, dim=1)
                 
                 loss = (ce(specific_output, y_gts.squeeze()) + ce(shared_output, y_gts.squeeze()))
 
@@ -253,14 +264,23 @@ def baseline_joint(opt):
                     optimizer.zero_grad()
                     x_categ, x_cont, y_gts = data[0].to(device), data[1].to(device),data[2].to(device)
 
-                    _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, temp_id)           
-                    shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,0,:]
-                    shared_output = model.shared_classifier[temp_id](shared_feature)
-                    shared_p = torch.softmax(shared_output, dim=1)
+                    _ , x_categ_enc, x_cont_enc = embed_data_cont(x_categ, x_cont, model, temp_id)
 
-                    specific_feature = model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,0,:]
+                    if opt.extractor_type == 'mlp':
+                        unified_shared_output = model.shared_unifier[temp_id](x_categ_enc, x_cont_enc)
+                        shared_feature = model.shared_extractor(unified_shared_output)
+                    else:
+                        shared_feature = model.shared_extractor(x_categ_enc, x_cont_enc)[:,feat_idx,:]
+                    shared_output = model.shared_classifier[temp_id](shared_feature)
+                    # shared_p = torch.softmax(shared_output, dim=1)
+
+                    if opt.extractor_type == 'mlp':
+                        unified_specific_output = model.specific_unifier[temp_id](x_categ_enc, x_cont_enc)
+                        specific_feature = model.specific_extractor[temp_id](unified_specific_output)
+                    else:
+                        specific_feature = model.specific_extractor[temp_id](x_categ_enc, x_cont_enc)[:,feat_idx,:]
                     specific_output = model.specific_classifier[temp_id](specific_feature)
-                    specific_p = torch.softmax(specific_output, dim=1)
+                    # specific_p = torch.softmax(specific_output, dim=1)
                     
                     loss = (ce(specific_output, y_gts.squeeze()) + ce(shared_output, y_gts.squeeze()))
 
