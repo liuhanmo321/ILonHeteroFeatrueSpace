@@ -49,6 +49,7 @@ Related parameters:
 
 
 For the parameters used, the ones need specialization are listed in below tables. While for the parameters or models not mentioned, use the default parameters directly.
+We selected hyper-parameters using **hyperopt** package.
 
 For parameters of ILEAHE-LwF and ILEAHE-EWC, the parameters are:
 
@@ -189,3 +190,15 @@ The performances (AAUC and std.) of changing alpha/beta1/beta2/gamma for ILEAHE-
 |     Volkert          |     58310          |     0            |     147         |     10         |     NA              |     https://www.openml.org/search?type=data&sort=runs&id=41166                              |
 
 Use bank-full.csv for Bank data set.
+
+
+### **Full Results of Figures in Paper**
+
+The full results for effectiveness-efficiency study.
+![Effectiveness-Efficiency Study](/figures/eff_eff.png "Effectiveness-Efficiency Study")
+
+The full results for ILEAHE, Joint and strong baselines under 3 different orders.
+![Results under 3 order](/figures/order.png "Results under 3 order")
+
+The full results for ILEAHE, Joint and strong baselines under 10 sets of randomly selected attribtues.
+![Results under 10 sets of attribtues](/figures/rand.png "Results under 10 sets of attribtues")
