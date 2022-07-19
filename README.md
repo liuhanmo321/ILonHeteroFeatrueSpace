@@ -194,11 +194,11 @@ Use bank-full.csv for Bank data set.
 
 ### **Full Results of Figures in Paper**
 
-The full results for effectiveness-efficiency study.
+The full results for effectiveness-efficiency study, corresponds to Sec. 4.4 and Fig. 6 in the paper.
 ![Effectiveness-Efficiency Study](/figures/eff_eff.png "Effectiveness-Efficiency Study")
 
-The full results for ILEAHE, Joint and strong baselines under 3 different orders.
+The full results for ILEAHE, Joint and strong baselines under 3 different orders, corresponds to Sec. 4.3.1 and Fig. 5(a).
 ![Results under 3 order](/figures/order.png "Results under 3 order")
 
-The full results for ILEAHE, Joint and strong baselines under 10 sets of randomly selected attribtues.
+The full results for ILEAHE, Joint and strong baselines under 10 sets of randomly selected attribtues, corresponds to Sec. 4.3.2 and Fig. 5(b).
 ![Results under 10 sets of attribtues](/figures/rand.png "Results under 10 sets of attribtues")
