@@ -19,9 +19,9 @@ To run the main experiments:
     python run.py -method=METHOD_NAME -gpu=GPU_ID
 ```
 
-| Method      | Joint | Ord-Joint | LwF | EWC |
-|-------------|-------|-----------|-----|-----|
-| METHOD_NAME | joint | ord_joint | lwf | ewc |
+| Method      | Joint | Ord-Joint | LwF | EWC | PCL | AFEC | DMC |
+|-------------|-------|-----------|-----|-----|-----|------|-----|
+| METHOD_NAME | joint | ord_joint | lwf | ewc | pcl | afec | dmc |
 
 | Method      | ACL | PNN | MUC-LwF | MUC-EWC | ILEAHE-LwF | ILEAHE-EWC |
 |-------------|-----|-----|---------|---------|------------|------------|
