@@ -1,5 +1,7 @@
 # ILonVariousFeatrueSpace
 
+
+## **Running the code**
 The environments:
 
     pytorch 1.10.1
@@ -47,6 +49,25 @@ Related parameters:
     -lr: learning rate
     -class_inc: add this when training on volkert dataset
 
+    -order: choose the order for learning the data sets, values are 1, 2, 3
+    -rand: choose the random seed for selecting attribtues, values from 1 to 10
+    
+    -extractor_type: choose the structure type of extractors, transformer for Transformer structure, rnn for RNN structure and mlp for MLP structure.
+
+## **Full Results of Figures in Paper**
+
+The full results for effectiveness-efficiency study, corresponds to Sec. 4.4 and Fig. 6 in the paper.
+![Effectiveness-Efficiency Study](/figures/eff_eff.png "Effectiveness-Efficiency Study")
+
+The full results for ILEAHE, Joint and strong baselines under 3 different orders, corresponds to Sec. 4.3.1 and Fig. 5(a).
+![Results under 3 order](/figures/order.png "Results under 3 order")
+
+The full results for ILEAHE, Joint and strong baselines under 10 sets of randomly selected attribtues, corresponds to Sec. 4.3.2 and Fig. 5(b).
+![Results under 10 sets of attribtues](/figures/rand.png "Results under 10 sets of attribtues")
+
+## **Hyperparameters**
+
+### **Selected hyperparameters**
 
 For the parameters used, the ones need specialization are listed in below tables. While for the parameters or models not mentioned, use the default parameters directly.
 We selected hyper-parameters using **hyperopt** package.
@@ -108,7 +129,7 @@ For parameters of MUC-LwF:
 |         | bank               | blastchar | income | shoppers | shrutime | volkert |
 | MUC-LwF | 2                  | 4         | 4      | 4        | 2        | 2       |
 
-**Parameter Search Space**
+### **Parameter Search Space**
 
 Because we decrease learning rate during training, it is not searched for methods other than Joint and Ord-Joint, which are sensitive to learning rates.
 
@@ -140,7 +161,7 @@ MUC-LwF and MUC-EWC
 
 Hyperparameters for ACL are adopted from original implementation, PNN doesn't include hyperparameters other than learning rate.
 
-### Parameter Selection Explanation
+### **Parameter Selection Explanation**
 
 **T** is for distillation loss and to make the difference between soft prediction possibilities less evident, and larger value leads to smaller difference. In practice, 2 or 4 are preferred.
 
@@ -177,7 +198,9 @@ The performances (AAUC and std.) of changing alpha/beta1/beta2/gamma for ILEAHE-
 | AAUC  | 0.8164 | 0.8152 | 0.8164 | 0.817  | 0.8174 | 0.817  |
 | std   | 0.0027 | 0.0029 | 0.0031 | 0.0023 | 0.0043 | 0.0023 |
 
-### **Data Set Info**
+
+
+## **Data Set Info**
 
 
 |     Name             |     Data Amount    |     Cate Feat    |     Num Feat    |     Classes    |     Pos Rate (%)    |     Link                                                                                    |
@@ -191,14 +214,3 @@ The performances (AAUC and std.) of changing alpha/beta1/beta2/gamma for ILEAHE-
 
 Use bank-full.csv for Bank data set.
 
-
-### **Full Results of Figures in Paper**
-
-The full results for effectiveness-efficiency study, corresponds to Sec. 4.4 and Fig. 6 in the paper.
-![Effectiveness-Efficiency Study](/figures/eff_eff.png "Effectiveness-Efficiency Study")
-
-The full results for ILEAHE, Joint and strong baselines under 3 different orders, corresponds to Sec. 4.3.1 and Fig. 5(a).
-![Results under 3 order](/figures/order.png "Results under 3 order")
-
-The full results for ILEAHE, Joint and strong baselines under 10 sets of randomly selected attribtues, corresponds to Sec. 4.3.2 and Fig. 5(b).
-![Results under 10 sets of attribtues](/figures/rand.png "Results under 10 sets of attribtues")

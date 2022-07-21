@@ -247,8 +247,6 @@ if __name__ == '__main__':
                 opt.result_path = './results_avg_loss/' + opt.data_name + '/' + '_'.join(saving_list) + '.csv'
                 os.makedirs('./results_avg_loss/' + opt.data_name + '/', exist_ok = True) 
                 for i in range(4):
-                # opt.set_seed = i + 1
-                # opt.dset_seed = 5 - i
                     if opt.method == 'lwf':
                         baseline_shared_only(opt)
                     if opt.method == 'specific_only':
@@ -273,7 +271,12 @@ if __name__ == '__main__':
                         pnn(opt)
                     if opt.method == 'muc_ewc':
                         muc_ewc(opt)
-
+                    if opt.method == 'pcl':
+                        pcl(opt)
+                    if opt.method == 'afec':
+                        afec(opt)
+                    if opt.method == 'dmc':
+                        dmc(opt)
         else:
             if opt.rand <= 3:
                 opt.set_seed = seed_dict[opt.data_name]
@@ -332,6 +335,12 @@ if __name__ == '__main__':
                         pnn(opt)
                     if opt.method == 'muc_ewc':
                         muc_ewc(opt)         
+                    if opt.method == 'pcl':
+                        pcl(opt)
+                    if opt.method == 'afec':
+                        afec(opt)
+                    if opt.method == 'dmc':
+                        dmc(opt)
             else:
                 acc_list = []
                 for i in range(times):
