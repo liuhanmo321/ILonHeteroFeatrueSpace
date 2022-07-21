@@ -179,7 +179,7 @@ Hyperparameters for ACL are adopted from original implementation, PNN doesn't in
 
 **Gamma** lifts the impact of discriminability score on the discriminative loss. Higher gamma makes larger punishment on smaller discriminability scores. The value is subjective to data sets.
 
-**Beta1 and Beta2** controls the effects of regularization loss and discriminative loss. Especially, Beta1 is preferred to be smaller. Because distillation loss has comparable value to the cross entropy loss and could negatively affect optimization on new data sets.
+**Beta1 and Beta2** controls the effects of regularization loss and discriminative loss. Especially, Beta1 is preferred to be smaller. Otherwise the model would bias towards old datasets.
 
 
 ### **Hyperparameter Sensitivity Analysis**
