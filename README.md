@@ -36,7 +36,7 @@ To test individual method, run main.py with the following parameters.
 Related parameters:
 
     -method: method to use. 'lwf', 'ewc', 'ours_lwf', 'ours_ewc',
-    'muc_lwf', 'muc_ewc', 'pnn', 'acl', 'joint', 'ord_joint'
+    'muc_lwf', 'muc_ewc', 'pnn', 'acl', 'joint', 'ord_joint', 'pcl', 'dmc, 'afec'
 
     -data_name: dataset to train on, choices are: 'bank', 'blastchar', 'income', 
     'shoppers', 'shrutime', 'volkert' 
@@ -158,6 +158,16 @@ MUC-LwF and MUC-EWC
 
     T: {0.5, 1, 2, 4} (For MUC-LwF)
     distill_frac: {0.005, 0.1, 0.2, 0.5, 1, 2}
+
+PCL
+
+    alpha: {0.01, 0.1, 1, 10, 100}
+    beta: {0.01, 0.1, 1, 10, 100}
+
+AFEC
+
+    alpha: {0.01, 0.1, 1, 10, 100}
+    distill_frac: {0.1, 0.5, 1, 2}
 
 Hyperparameters for ACL are adopted from original implementation, PNN doesn't include hyperparameters other than learning rate.
 
