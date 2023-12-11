@@ -6,16 +6,21 @@
 
 ```bibtex
 @article{liu2023incremental,
-  author = {Liu, Hanmo and Di, Shimin and Chen, Lei},
-  title = {Incremental Tabular Learning on Heterogeneous Feature Space},
-  journal = {PACMMOD},
-  volume = {1},
-  number = {1},
-  year = {2023},
-  month = {May},
-  pages = {18:1--18:18},
-  url = {https://doi.org/10.1145/3588698},
-  doi = {10.1145/3588698}
+author = {Liu, Hanmo and Di, Shimin and Chen, Lei},
+title = {Incremental Tabular Learning on Heterogeneous Feature Space},
+year = {2023},
+issue_date = {May 2023},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {1},
+number = {1},
+url = {https://doi.org/10.1145/3588698},
+doi = {10.1145/3588698},
+journal = {Proc. ACM Manag. Data},
+month = {may},
+articleno = {18},
+numpages = {18},
+keywords = {incremental learning, tabular data, transformer}
 }
 ```
 
